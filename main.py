@@ -7,10 +7,6 @@ from pyomo.opt import SolverFactory
 N  =  3 # i
 M  =  3 # j
 
-d  =  {(1, 1): 1.7, (1, 2): 7.2, (1, 3): 9.0, (1, 4): 8.3,
-(2, 1): 2.9, (2, 2): 6.3, (2, 3): 9.8, (2, 4): 0.7,
-(3, 1): 4.5, (3, 2): 4.8, (3, 3): 4.2, (3, 4): 9.3}
-
 model  =  pyo.ConcreteModel()
 #SET O RANGOS
 model.i  =  RangeSet(N)   #producto intermedio
@@ -30,14 +26,15 @@ model.Destil = Param(initialize = 7849, doc = 'Destilacion atmosfereica')
 model.rendimiento = Param( model.i, initialize = {1: 0.014, 2:0.15, 3:0.82}, doc = 'Rendimientos Nvl, Nvp, Ar')
 
 model.densidad = Param( model.i, initialize = {1: 0.66, 2:0.749, 3:0.787}, doc = 'Densidad Nvl, Nvp, Ar')
+model.preciog = Param( model.i, initialize = {1: 3000, 2:4000, 3:4400}, doc = 'Precio Gaso83, Gaso90, Gaso94')
 
 
 
 #VARAIABLES
 model.Ar = Var(within = NonNegativeReals, bounds = (0, 1045), doc = 'Alimentacion al reformador')
-model.Wg = Var(model.j ,within = NonNegativeReals, bounds = (0, None), doc = 'Alimentacion al reformador')
-
+model.Wg = Var(model.j ,within = NonNegativeReals, bounds = (0, None), doc = 'gasolina por un peso W(masa)')
 model.x = Var( model.i, model.j, bounds = (0, None), doc = 'transferencia m3/d del producto intermedio i en la mezcla del producto final j ')
+model.gx = Var( model.j, bounds = (0, None), doc = 'gasolina j ')
 #RESTRICCINES
 #demanda
 
@@ -66,4 +63,12 @@ def pazufre_rule(model, j):
 model.azufre = Constraint(model.j, rule = pazufre_rule, doc = 'Restriccion Peso Azufre de calidad producto final j')
 
 #FUNCION OBJETIVO
-print(model.pprint())
+def obj_rule(model):
+  return sum( model.preciog[j]*model.gx[j] for j in model.j )
+model.obj = Objective(expr = obj_rule, sense = maximize,doc = 'funcion objetivo')
+#gasolina j
+model.g83 = Constraint(expr = model.x[1,1] + model.x[2,1] + model.x[3,1] == model.gx[1], doc = 'Gasolina 83')
+model.g90 = Constraint(expr = model.x[1,2] + model.x[2,2] + model.x[3,2] == model.gx[2], doc = 'Gasolina 90')
+model.g94 = Constraint(expr = model.x[3,2] == model.gx[3], doc = 'Gasolina 94')
+
+print(model.obj.pprint())
