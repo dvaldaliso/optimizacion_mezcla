@@ -17,15 +17,15 @@ model.i = RangeSet(N)   #producto intermedio
 model.j = RangeSet(M)   #producto final
 
 
-model.RbnPf = Param(model.i, initialize={1: 350,2: 600 ,3: 400}, doc='Capacity of plant i in cases')
+model.RbnPf = Param(model.i, initialize={1: 350,2: 600 ,3: 400}, doc='Limite de Research Blending Number producto final j')
 model.Rbn = Param(model.i, initialize={1: 350,2: 600 ,3: 400}, doc='Research Blending number producto i ')
 
 
 model.x = Var( model.i, model.j, bounds=(0,None))
 
-def supply_rule(model, j):
+def rbn_rule(model, j):
   return sum(model.Rbn[i]*model.x[i,j] for i in model.i) <= model.RbnPf[j]
 
-model.supply = Constraint(model.j, rule=supply_rule, doc='Restriccion de calidad producto final j')
+model.rbn = Constraint(model.j, rule=rbn_rule, doc='Restriccion de calidad producto final j')
 
 print(model.pprint())
