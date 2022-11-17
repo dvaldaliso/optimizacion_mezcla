@@ -26,5 +26,6 @@ x_value = pyo.value(x)
 y_value = pyo.value(y)
 
 print('\n---------------------------------------------------------------------')
+x.display
 print('x=',x_value)
 print('y=',y_value)
