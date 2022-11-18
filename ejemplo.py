@@ -20,12 +20,12 @@ model.obj = pyo.Objective(expr= x+y, sense=maximize)
 opt = SolverFactory('glpk')
 opt.solve(model)
 
-model.pprint()
+#model.pprint()
 
 x_value = pyo.value(x)
 y_value = pyo.value(y)
 
 print('\n---------------------------------------------------------------------')
-x.display
+model.display
 print('x=',x_value)
 print('y=',y_value)
