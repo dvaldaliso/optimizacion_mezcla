@@ -1,5 +1,5 @@
 # optmizacion_mezcla
-Install con Conda
+# Install con Conda
 conda install -c conda-forge pyomo
 
 conda install -c conda-forge ipopt glpk
