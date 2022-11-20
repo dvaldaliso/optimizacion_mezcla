@@ -18,7 +18,7 @@ model.C3 = pyo.Constraint(expr= 2*x-y<=10)
 model.obj = pyo.Objective(expr= x+y, sense=maximize)
 
 opt = SolverFactory('glpk')
-opt.solve(model)
+opt.solve(model, tee=True)
 
 #model.pprint()
 
