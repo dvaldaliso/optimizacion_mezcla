@@ -50,11 +50,11 @@ productosFinales = {
 
 demandaPF = {
   'G83': { 'Min':0 , 'Max':'M'},
-    'G90': {'Min':0, 'Max':'M'},
-    'G94': {'Min':0, 'Max':'M'}
+    'G90': {'Min':750, 'Max':'M'},
+    'G94': {'Min':300, 'Max':'M'}
 }
 # display feed information
-#print(pd.DataFrame.from_dict(productosFinales).T)
+print(pd.DataFrame.from_dict(productosFinales).T)
 model.Destil = Param(initialize = 8744, doc = 'Destilacion atmosfereica')
 
 #VARAIABLES
@@ -87,14 +87,12 @@ for j in model.j:
 
 
 #calidad
-
 model.calidad = ConstraintList()
 for j in model.j:
     model.calidad.add(sum(x[i,j]*productosIntermedios[i]['RBN'] for i in model.i) -  productosFinales[j]['RBNmin']*gx[j] >= 0)
     model.calidad.add(sum(x[i,j]* productosIntermedios[i]['Densidad']  for i in model.i) -  productosFinales[j]['Densidadmin']*gx[j] >= 0)
     model.calidad.add(sum(x[i,j]*productosIntermedios[i]['RVP'] for i in model.i) - productosFinales[j]['RVPmax']*gx[j] <= 0)
     model.calidad.add(sum(x[i,j]*productosIntermedios[i]['PAzufre']   for i in model.i) -  productosFinales[j]['Azufemax']*gx[j]  <= 0)
-
 
 #demanda
 model.demanda = ConstraintList()
