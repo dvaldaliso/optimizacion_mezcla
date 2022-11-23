@@ -4,12 +4,7 @@ import pyomo.environ as pyo
 from pyomo.environ import *
 from pyomo.opt import SolverFactory
 
-
-model  =  pyo.ConcreteModel(name="(Mezclado de gasolina)")
-
-
 #PARAMETROS
-
 
 productosIntermedios = {
     'Nvl': {'Rendimiento': 0.04776, 'RBN': 55.48230, 'RVP': 0.61140, 'PAzufre': 64.72995, 'Densidad': 0.66703},
@@ -27,9 +22,9 @@ demandaPF = {
     'G90': {'Min':750, 'Max':'M'},
     'G94': {'Min':300, 'Max':'M'}
 }
-# display feed information
 
 #model.a = Set(initialize=['Nim','NCraq'], doc='Productos Intermedios Importados')
+model  =  pyo.ConcreteModel(name="(Mezclado de gasolina)")
 #Se puede hacer una union con model.i para tenerlos juntos y trabjarlos por separados en los casos que sea necesario
 model.i = Set(initialize=['Nvl','Np','Ref'], doc='Productos Intermedios')
 model.j = Set(initialize=['G83', 'G90', 'G94'], doc='Productos Finales')
@@ -48,7 +43,6 @@ model.gx = Var(model.j,within = NonNegativeReals, doc = 'gasolina j')
 gx = model.gx
 
 #RESTRICCIONES
-
 #Balance de materiales(Lo que se extrae de los productos intermedios no sobrepasara la existencia)
 model.NvlMB = Constraint(expr = x['Nvl','G83'] + x['Nvl','G90'] + x['Nvl','G94'] <= productosIntermedios['Nvl']['Rendimiento']*model.Destil, doc = 'Balance de Materiales para la Nafta Virgen ligera')
 
@@ -66,7 +60,6 @@ model.gasolinaj = ConstraintList()
 for j in model.j:
     model.gasolinaj.add(sum(x[i,j] for i in model.i) == gx[j])
 
-
 #calidad
 model.calidad = ConstraintList()
 for j in model.j:
@@ -83,7 +76,6 @@ for j in model.j:
   if isinstance(demandaPF[j]['Max'], (int, float)):
     model.demanda.add(model.gx[j] <= demandaPF[j]['Max'])  
 
-
 #FUNCION OBJETIVO
 def obj_rule(model):
   return sum( productosFinales[j]['price']*gx[j] for j in model.j )
@@ -98,8 +90,6 @@ opt = SolverFactory("glpk")
 
 resultados = opt.solve(model, tee = True)
 resultados.write()
-
-
 
 # imprimimos resultados
 print("\nSolución óptima encontrada\n" + '-'*80)
