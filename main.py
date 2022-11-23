@@ -5,12 +5,11 @@ from pyomo.environ import *
 from pyomo.opt import SolverFactory
 
 
-model  =  pyo.ConcreteModel()
+model  =  pyo.ConcreteModel(name="(Mezclado de gasolina)")
 
-model.i = Set(initialize=['Nvl','Np','Ref'], doc='Productos Intermedios')
-model.j = Set(initialize=['G83', 'G90', 'G94'], doc='Productos Finales')
 
 #PARAMETROS
+
 
 productosIntermedios = {
     'Nvl': {'Rendimiento': 0.04776, 'RBN': 55.48230, 'RVP': 0.61140, 'PAzufre': 64.72995, 'Densidad': 0.66703},
@@ -29,6 +28,12 @@ demandaPF = {
     'G94': {'Min':300, 'Max':'M'}
 }
 # display feed information
+
+#model.a = Set(initialize=['Nim','NCraq'], doc='Productos Intermedios Importados')
+#Se puede hacer una union con model.i para tenerlos juntos y trabjarlos por separados en los casos que sea necesario
+model.i = Set(initialize=['Nvl','Np','Ref'], doc='Productos Intermedios')
+model.j = Set(initialize=['G83', 'G90', 'G94'], doc='Productos Finales')
+
 print(pd.DataFrame.from_dict(productosFinales).T)
 model.Destil = Param(initialize = 8744, doc = 'Destilacion atmosfereica')
 
@@ -50,6 +55,7 @@ model.NvlMB = Constraint(expr = x['Nvl','G83'] + x['Nvl','G90'] + x['Nvl','G94']
 model.NvpMB = Constraint(expr = x['Np','G83'] + x['Np','G90'] + x['Np','G94'] + Ar <= productosIntermedios['Np']['Rendimiento']*model.Destil, doc = 'Balance de Materiales para la Nafta Virgen Pesada')
 
 model.Ref = Constraint(expr = x['Ref','G83'] + x['Ref','G90'] + x['Ref','G94'] <= productosIntermedios['Ref']['Rendimiento']*Ar, doc = 'Balance de Materiales para el Refromado')
+
 #La suma de todas las partes debe ser el total de la mezcla a elaborar
 def wgasolina_rule(model, j):
   return  sum(productosIntermedios[i]['Densidad']*x[i,j] for i in model.i) == Wg[j]   
@@ -77,8 +83,6 @@ for j in model.j:
   if isinstance(demandaPF[j]['Max'], (int, float)):
     model.demanda.add(model.gx[j] <= demandaPF[j]['Max'])  
 
-model.demanda.pprint()
-
 
 #FUNCION OBJETIVO
 def obj_rule(model):
@@ -91,16 +95,41 @@ def pyomo_postprocess(options=None, instance=None, results=None):
 
 # utilizamos solver glpk
 opt = SolverFactory("glpk")
+
 resultados = opt.solve(model, tee = True)
+resultados.write()
+
+
 
 # imprimimos resultados
 print("\nSolución óptima encontrada\n" + '-'*80)
 pyomo_postprocess(None, None, resultados)
 if (resultados.solver.status == SolverStatus.ok) and (resultados.solver.termination_condition == TerminationCondition.optimal):
   print(' Do something when the solution in optimal and feasible')
+  # display results
+  vol = sum(x[i,j]() for i in model.i for j in model.j)
+  print("Total Profit =", round(model.obj(), 1), "dollars.")
+  print("Total Volume =", round(vol, 1), "m3/d.")
+  print("Profit =", round(100*model.obj()/vol,1), "cents por m3/d.")
+  stream_results = pd.DataFrame()
+
+  for i in model.i:
+    for j in model.j:
+        stream_results.loc[i,j] = round(x[i,j](), 1)
+    stream_results.loc[i,'Total'] = round(sum(x[i,j]() for j in model.j), 1)
+    if i=='Ref':
+      stream_results.loc[i,'Available'] = round(productosIntermedios[i]['Rendimiento']*value(Ar), 1)
+    elif i=='Np':
+      np=productosIntermedios[i]['Rendimiento']*value(model.Destil)
+      stream_results.loc[i,'Available'] = round(np-value(Ar), 1)
+    else:
+       stream_results.loc[i,'Available'] = round(productosIntermedios[i]['Rendimiento']*value(model.Destil), 1)
+
+  stream_results['Unused (Slack)'] = stream_results['Available'] - stream_results['Total']
+  print(stream_results)
+
 elif (resultados.solver.termination_condition == TerminationCondition.infeasible):
   print('Do something when model in infeasible')
 else:
   # Something else is wrong
   print ('Solver Status: ',  resultados.solver.status)
-
