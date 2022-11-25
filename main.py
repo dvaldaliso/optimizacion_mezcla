@@ -25,11 +25,12 @@ demandaPF = {
 
 #model.a = Set(initialize=['Nim','NCraq'], doc='Productos Intermedios Importados')
 model  =  pyo.ConcreteModel(name="(Mezclado de gasolina)")
+model.dual = pyo.Suffix(direction=pyo.Suffix.IMPORT_EXPORT)
 #Se puede hacer una union con model.i para tenerlos juntos y trabjarlos por separados en los casos que sea necesario
 model.i = Set(initialize=['Nvl','Np','Ref'], doc='Productos Intermedios')
 model.j = Set(initialize=['G83', 'G90', 'G94'], doc='Productos Finales')
 
-print(pd.DataFrame.from_dict(productosFinales).T)
+#print(pd.DataFrame.from_dict(productosFinales).T)
 model.Destil = Param(initialize = 8744, doc = 'Destilacion atmosfereica')
 
 #VARAIABLES
@@ -41,7 +42,7 @@ model.x = Var( model.i, model.j,within = NonNegativeReals, bounds = (0, None), d
 x = model.x
 model.gx = Var(model.j,within = NonNegativeReals, doc = 'gasolina j')
 gx = model.gx
-
+x.display()
 #RESTRICCIONES
 #Balance de materiales(Lo que se extrae de los productos intermedios no sobrepasara la existencia)
 model.NvlMB = Constraint(expr = x['Nvl','G83'] + x['Nvl','G90'] + x['Nvl','G94'] <= productosIntermedios['Nvl']['Rendimiento']*model.Destil, doc = 'Balance de Materiales para la Nafta Virgen ligera')
@@ -56,9 +57,10 @@ def wgasolina_rule(model, j):
 model.wgasolina = Constraint(model.j, rule = wgasolina_rule, doc = 'El peso en masa de todos los productos intermedios tiene que ser mayor o igual que el peso en masa del producto final j')
 
 #gasolina j
-model.gasolinaj = ConstraintList()
-for j in model.j:
-    model.gasolinaj.add(sum(x[i,j] for i in model.i) == gx[j])
+def gasolinaj_rule(model, j):
+  return  sum(x[i,j] for i in model.i) == gx[j]   
+model.gasolinaj = Constraint(model.j, rule = gasolinaj_rule, doc = 'Cambio de variable')
+
 
 #calidad
 model.calidad = ConstraintList()
@@ -83,13 +85,16 @@ model.obj = Objective(expr = obj_rule, sense = maximize,doc = 'funcion objetivo'
 
 # resolvemos el problema e imprimimos resultados
 def pyomo_postprocess(options=None, instance=None, results=None):
+    Ar.display()
+    gx.display()
     x.display()
 
 # utilizamos solver glpk
 opt = SolverFactory("glpk")
 
-resultados = opt.solve(model, tee = True)
-resultados.write()
+resultados = opt.solve(model)
+
+#resultados.write()
 
 # imprimimos resultados
 print("\nSolución óptima encontrada\n" + '-'*80)
@@ -98,9 +103,9 @@ if (resultados.solver.status == SolverStatus.ok) and (resultados.solver.terminat
   print(' Do something when the solution in optimal and feasible')
   # display results
   vol = sum(x[i,j]() for i in model.i for j in model.j)
-  print("Total Profit =", round(model.obj(), 1), "dollars.")
-  print("Total Volume =", round(vol, 1), "m3/d.")
-  print("Profit =", round(100*model.obj()/vol,1), "cents por m3/d.")
+  #print("Total Profit =", round(model.obj(), 1), "dollars.")
+  #print("Total Volume =", round(vol, 1), "m3/d.")
+  #print("Profit =", round(100*model.obj()/vol,1), "cents por m3/d.")
   stream_results = pd.DataFrame()
 
   for i in model.i:
@@ -123,3 +128,16 @@ elif (resultados.solver.termination_condition == TerminationCondition.infeasible
 else:
   # Something else is wrong
   print ('Solver Status: ',  resultados.solver.status)
+
+#dual
+#Restricciones
+# display all duals
+print ("Duals costo reducido")
+for c in model.component_objects(pyo.Constraint, active=True):
+    print ("   Constraint",c)
+    for index in c:
+        print ("      ", index, model.dual[c[index]])
+
+
+
+
