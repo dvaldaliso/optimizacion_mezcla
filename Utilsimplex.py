@@ -7,35 +7,27 @@ def buscar_fila_pivote(columnaPivote, bIb):
     columnaPivote = list(list(columnaPivote.A)[0])
     bIb = list(list(bIb))
     dlist = []
-    i = 0
-    for c in bIb:
-        b = columnaPivote[i]
-        dlist.append(c/b)
-        i = i+1
-
-    return dlist.index(min(dlist))
-
-
-def buscar_fila_pivote2(columnaPivote, bIb):
-
-    columnaPivote = list(list(columnaPivote.A)[0])
-    bIb = list(list(bIb))
 
     # Si la columna pivote tiene valores negativos o igual a 0 no se tiene en cuenta
-    verifica = np.all(np.asarray(columnaPivote) <= 0)
-    if not verifica:
+    verifica = listHavelessCero(columnaPivote)
+    if verifica:
         indexdel = np.where(np.asarray(columnaPivote) <= 0)[0][0]
         del columnaPivote[indexdel]
         del bIb[indexdel]
-
-    dlist = []
     i = 0
     for c in bIb:
         b = columnaPivote[i]
         dlist.append(c/b)
         i = i+1
-
+    print(dlist)
     return dlist.index(min(dlist))
+
+
+def listHavelessCero(list):
+    for x in list:
+        if x < 0:
+            return True
+    return False
 
 
 def getIndex(A, vbase, baseorig):
@@ -58,15 +50,7 @@ def getmatriz(A, orden):
 
 
 def seleccionarColPivote(A, CbBIAMenosC, X):
-    print(CbBIAMenosC)
-    print(type(CbBIAMenosC))
+    CbBIAMenosC = np.asarray(CbBIAMenosC)
     CbBIAMenosC = list(list(CbBIAMenosC)[0])
-
-    mini = min(CbBIAMenosC)
-    return CbBIAMenosC.index(mini)
-
-
-def seleccionarColPivote3(A, CbBIAMenosC, X):
-    CbBIAMenosC = list(list(CbBIAMenosC.A)[0])
     mini = min(CbBIAMenosC)
     return CbBIAMenosC.index(mini)

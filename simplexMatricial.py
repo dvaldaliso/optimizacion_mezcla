@@ -88,6 +88,8 @@ CbB1IA = Cb1 @ B1IA
 
 # Z o Funcion Objetivo
 CbB1Ib = Cb1 @ B1Ib
+
+# zj-cj creo q es el costo reducido
 CbB1IAmenosC = CbB1IA - C
 
 # Si en este Vector todos los valores son >0 terminamos
@@ -96,11 +98,11 @@ if is_all_mzero:
     print('is over')
 # Seleccionar nueva base
 # Buscar la columna pivote varaible que entra
-colPiv1IN = util.seleccionarColPivote3(A, CbB1IAmenosC, X)
+colPiv1IN = util.seleccionarColPivote(A, CbB1IAmenosC, X)
 print(X[colPiv1IN], 'Nueva varaible que entra a la base')
 # Buscar fila pivote
-# Buscamos la columna de la varaible que entra en la matriz A original
-indexbaseout = util.buscar_fila_pivote(np.transpose(A[:, [colPiv1IN]]), B1Ib)
+indexbaseout = util.buscar_fila_pivote(
+    np.transpose(B1IA[:, [colPiv1IN]]), B1Ib)
 print(VbasicaI1[indexbaseout], 'varaible que sale')
 print('-------------------------------')
 
@@ -166,8 +168,8 @@ is_all_mzero3 = np.all(np.asarray(CbB3IAMenosC) >= 0)
 if is_all_mzero3:
     print('is over')
 
-colPiv3IN = util.seleccionarColPivote3(A, CbB3IAMenosC, X)
-filaPiv3Out = util.buscar_fila_pivote2(
+colPiv3IN = util.seleccionarColPivote(A, CbB3IAMenosC, X)
+filaPiv3Out = util.buscar_fila_pivote(
     np.transpose(B3IA[:, [colPiv3IN]]), B3Ib)
 print('----------------------')
 print(X[colPiv3IN], 'Nueva que entra')
