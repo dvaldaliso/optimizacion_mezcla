@@ -89,7 +89,7 @@ while itereacion < 10:
     # Z o Funcion Objetivo
     CbBIb = Cb @ BIb
 
-    # zj-cj creo q es el costo reducido
+    # costes reducidos Zj - Cj
     CbBIAmenosC = CbBIA - C
 
     # Si en este Vector todos los valores son >0 terminamos
