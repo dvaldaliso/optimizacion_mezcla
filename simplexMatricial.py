@@ -66,6 +66,7 @@ VbasicaI1 = [X[2], X[3], X[5]]
 
 # Paso2 Obtener B Inversa
 orden = util.getIndex(A, VbasicaI1, X)
+print(orden, '---orden')
 A = np.matrix(A)
 B1 = util.getmatriz(A, orden)
 B1I = np.linalg.inv(np.array(B1, dtype=int))
@@ -98,11 +99,10 @@ if is_all_mzero:
     print('is over')
 # Seleccionar nueva base
 # Buscar la columna pivote varaible que entra
-colPiv1IN = util.seleccionarColPivote(A, CbB1IAmenosC, X)
+colPiv1IN = util.seleccionarColPivote(CbB1IAmenosC)
 print(X[colPiv1IN], 'Nueva varaible que entra a la base')
 # Buscar fila pivote
-indexbaseout = util.buscar_fila_pivote(
-    np.transpose(B1IA[:, [colPiv1IN]]), B1Ib)
+indexbaseout = util.buscar_fila_pivote(B1IA, colPiv1IN, B1Ib)
 print(VbasicaI1[indexbaseout], 'varaible que sale')
 print('-------------------------------')
 
@@ -112,7 +112,7 @@ VbasicaI2 = VbasicaI1
 VbasicaI2[indexbaseout] = X[colPiv1IN]
 
 orden2 = util.getIndex(A, VbasicaI2, X)
-
+print(orden2, 'oreden2')
 matrizbase = util.getmatriz(A, orden2)
 B2I = np.linalg.inv(np.array(matrizbase, dtype=int))
 
@@ -133,8 +133,8 @@ CbB2IAMenosC = CbB2IA - C
 is_all_mzero = np.all(np.asarray(CbB2IAMenosC) >= 0)
 if is_all_mzero:
     print('is over')
-colPiv2IN = util.seleccionarColPivote(A, CbB2IAMenosC, X)
-filaPiv2Out = util.buscar_fila_pivote(np.transpose(B2IA[:, [colPiv2IN]]), B2Ib)
+colPiv2IN = util.seleccionarColPivote(CbB2IAMenosC)
+filaPiv2Out = util.buscar_fila_pivote(B2IA, colPiv2IN, B2Ib)
 
 print(x[colPiv2IN], 'Nueva que entra')
 print(VbasicaI2[filaPiv2Out], 'La que sale')
@@ -145,6 +145,7 @@ VbasicaI3 = VbasicaI2
 VbasicaI3[filaPiv2Out] = x[colPiv2IN]
 
 orden3 = util.getIndex(A, VbasicaI3, X)
+print(orden3, '---orden3')
 matrizbase3 = util.getmatriz(A, orden3)
 # Inversa de base
 B3I = np.linalg.inv(np.array(matrizbase3, dtype=int))
@@ -168,9 +169,8 @@ is_all_mzero3 = np.all(np.asarray(CbB3IAMenosC) >= 0)
 if is_all_mzero3:
     print('is over')
 
-colPiv3IN = util.seleccionarColPivote(A, CbB3IAMenosC, X)
-filaPiv3Out = util.buscar_fila_pivote(
-    np.transpose(B3IA[:, [colPiv3IN]]), B3Ib)
+colPiv3IN = util.seleccionarColPivote(CbB3IAMenosC)
+filaPiv3Out = util.buscar_fila_pivote(B3IA, colPiv3IN, B3Ib)
 print('----------------------')
 print(X[colPiv3IN], 'Nueva que entra')
 print(VbasicaI3[filaPiv3Out], filaPiv3Out, 'La que sale')
@@ -203,6 +203,8 @@ CbB4IAMenosC = CbB4IA - C
 is_all_mzero4 = np.all(np.asarray(CbB4IAMenosC) >= 0)
 if is_all_mzero4:
     print('is over')
+
+print(VbasicaI4)
 print(CbB4IAMenosC)
 print(CbB4Ib)
 print(B4Ib)
