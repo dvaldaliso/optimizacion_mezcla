@@ -163,7 +163,7 @@ else:
 # dual
 # Restricciones
 # display all duals
-print("Duals costo reducido")
+print("Duals Precion sombra")
 for c in model.component_objects(pyo.Constraint, active=True):
     print("   Constraint", c)
     for index in c:
