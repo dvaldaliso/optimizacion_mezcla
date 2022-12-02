@@ -9,6 +9,9 @@ def buscar_fila_pivote(BIA, colPivIN, bIb):
     bIb = list(list(bIb))
 
     # Si la columna pivote tiene valores negativos o igual a 0 no se tiene en cuenta
+    # Feasibility condition. For both the maximization and the minimization problems, the
+    # leaving variable is the basic variable associated with the smallest nonnegative ratio
+    # with strictly positive denominator. Ties are broken arbitrarily.
     verifica = listHavelessCero(columnaPivote)
 
     if verifica:

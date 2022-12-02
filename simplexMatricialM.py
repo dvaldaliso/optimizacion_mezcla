@@ -1,4 +1,4 @@
-#! /usr/bin/python3
+#! /usr/bin/python3.6
 import numpy as np
 import sympy as sp
 from sympy.matrices import Matrix, eye, zeros, ones, diag, GramSchmidt
@@ -26,7 +26,9 @@ Rmayorigual = 1
 
 holguras = [0 for m in range(1, Rmenorigual+1)]
 excesos = [0 for m in range(1, Rmayorigual+1)]
-artifi = [-10000 for m in range(1, Rmayorigual+1)]
+# What value of M should we use? The answer depends on the data of the original LP. Recall that the penalty M must be sufficiently large relative to the original objective coefficients to force the artificial variables to be zero (which happens only if a feasible solution exists). At the same time, since computers are the main tool for solving LPs, M should not be unnecessarily too large, as this may lead to serious roundoff error. In the present example, the objective coefficients of x1
+# and x2 are 4 and 1, respectively, and it appears reasonable to set M = 100
+artifi = [-100 for m in range(1, Rmayorigual+1)]
 
 C = np.concatenate([c, holguras, excesos, artifi])
 
