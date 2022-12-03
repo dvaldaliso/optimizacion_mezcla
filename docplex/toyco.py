@@ -1,10 +1,11 @@
 #! /usr/bin/python3
 from docplex.mp.model import Model
 
-m = Model(name='mezcla de gasolina')
+m = Model(name='Toyco')
 x1 = m.continuous_var(name="x1", lb=0)
 x2 = m.continuous_var(name="x2", lb=0)
 x3 = m.continuous_var(name="x3", lb=0)
+
 c1 = m.add_constraint(x1 + 2*x2 + x3 <= 430, ctname="const1")
 c2 = m.add_constraint(3*x1 + 2*x3 <= 460, ctname="const2")
 c2 = m.add_constraint(x1 + 4*x2 <= 420, ctname="const2")
