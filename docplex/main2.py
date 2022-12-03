@@ -28,11 +28,13 @@ for n in range(n_cons):
 
 cpx = m.get_engine().get_cplex()
 
+
 of = cpx.solution.sensitivity.objective()
 b = cpx.solution.sensitivity.rhs()
 
 var_list = [m.get_var_by_name('x1'), m.get_var_by_name(
     'x2'), m.get_var_by_name('x3')]
+
 print('-'*80)
 for n in range(len(var_list)):
     print('los costos reducidos son. ' +
@@ -43,4 +45,13 @@ for n in range(len(var_list)):
 print('-'*80)
 print('Restricciones de sensibilidad')
 for n in range(n_cons):
-    print('la varaible' + str(const[n])+' '+str(b[n]))
+    print('la varaible ' + str(const[n])+' '+str(b[n]))
+
+print('-----Matriz Soluction Optima-----------')
+cp = m.get_cplex()
+
+for fila in cp.solution.advanced.binvarow():
+    print(fila)
+print('-'*8)
+for fila in cp.solution.advanced.binvrow():
+    print(fila)
