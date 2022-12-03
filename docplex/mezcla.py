@@ -22,7 +22,7 @@ demandaPF = {
     'G90': {'Min': 750, 'Max': 'M'},
     'G94': {'Min': 300, 'Max': 'M'}
 }
-
+Destil = 8744
 model = Model(name='Mezcla de Gasolina')
 transferencias = [(i, j) for i in pInt for j in pFin]
 
@@ -30,7 +30,13 @@ x = model.continuous_var_dict(transferencias, name='x', lb=0)
 ar = model.continuous_var(name='Alimentacion al reformador', lb=0, ub=1526)
 gx = model.continuous_var_dict(pFin, name='gasolina final', lb=0)
 
-# Balance de materiales
+# Balance de materiales (Lo que se extrae de los productos intermedios no sobrepasara la existencia)
+model.add_constraint(x[('Nvl', 'G83')] + x[('Nvl', 'G90')] + x[('Nvl', 'G94')]
+                     <= pIntC['Nvl']['Rendimiento'] * Destil, ctname='Nafta Virgen Ligera')
+model.add_constraint(x[('Np', 'G83')] + x[('Np', 'G90')] + x[('Np', 'G94')] +
+                     ar <= pIntC['Np']['Rendimiento'] * Destil, ctname='Nafta Virgen Pesada')
+model.add_constraint(x[('Ref', 'G83')] + x[('Ref', 'G90')] + x[('Ref', 'G94')]
+                     <= pIntC['Ref']['Rendimiento'] * ar, ctname='Reformador')
 
 # gasolinaj
 for j in pFin:
@@ -55,4 +61,12 @@ for j in pFin:
     if isinstance(demandaPF[j]['Max'], (int, float)):
         model.add_constraint(model.sum(x[(i, j)]
                              for i in pInt) <= demandaPF[j]['Max'])
+
+# Funcion Objetivo
+model.set_objective("Max", model.sum(pFinC[j]['price']*gx[j] for j in pFin))
 print(model.export_to_string())
+model.print_information()
+model.solve()
+print(model.solve_details)
+
+model.print_solution()
