@@ -1,9 +1,9 @@
-#! /usr/bin/python3.9
-from docplex.mp.model import Model
-# PARAMETROS
 
-pInt = ['Nvl', 'Np', 'Ref']
-pFin = ['G83', 'G90', 'G94']
+from docplex.mp.model import Model
+
+# Datos y Estructuras
+pInt = {'Nvl', 'Np', 'Ref'}
+pFin = {'G83', 'G90', 'G94'}
 # productos Intermedios caracterisiticas
 pIntC = {
     'Nvl': {'Rendimiento': 0.04776, 'RBN': 55.48230, 'RVP': 0.61140, 'PAzufre': 64.72995, 'Densidad': 0.66703},
@@ -23,4 +23,18 @@ demandaPF = {
     'G94': {'Min': 300, 'Max': 'M'}
 }
 
-m = Model(name='Mezcla de Gasolina')
+model = Model(name='Mezcla de Gasolina')
+transferencias = [(i, j) for i in pInt for j in pFin]
+
+x = model.integer_var_dict(transferencias, name='x')
+
+
+# Demanda
+for j in pFin:
+    if isinstance(demandaPF[j]['Min'], (int, float)):
+        model.add_constraint(model.sum(x[(i, j)]
+                             for i in pInt) >= demandaPF[j]['Min'])
+    if isinstance(demandaPF[j]['Max'], (int, float)):
+        model.add_constraint(model.sum(x[(i, j)]
+                             for i in pInt) <= demandaPF[j]['Max'])
+print(model.export_to_string())
