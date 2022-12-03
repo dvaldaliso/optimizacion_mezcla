@@ -1,4 +1,4 @@
-# optmizacion_mezcla
+# optimizacion_mezcla
 ## Comenzando 🚀
 En el Archivo ModeloV2 esta el modelo Matematico
 ### Pre-requisitos 📋

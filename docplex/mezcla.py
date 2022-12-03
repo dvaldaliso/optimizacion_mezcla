@@ -26,8 +26,26 @@ demandaPF = {
 model = Model(name='Mezcla de Gasolina')
 transferencias = [(i, j) for i in pInt for j in pFin]
 
-x = model.integer_var_dict(transferencias, name='x')
+x = model.continuous_var_dict(transferencias, name='x', lb=0)
+ar = model.continuous_var(name='Alimentacion al reformador', lb=0, ub=1526)
+gx = model.continuous_var_dict(pFin, name='gasolina final', lb=0)
 
+# Balance de materiales
+
+# gasolinaj
+for j in pFin:
+    model.add_constraint(model.sum(x[(i, j)] for i in pInt) == gx[j])
+
+# Calidad
+for j in pFin:
+    model.add_constraint(model.sum(x[(i, j)]*pIntC[i]['RBN']
+                         for i in pInt) - pFinC[j]['RBNmin']*gx[j] >= 0)
+    model.add_constraint(model.sum(x[(i, j)]*pIntC[i]['Densidad']
+                                   for i in pInt) - pFinC[j]['Densidadmin']*gx[j] >= 0)
+    model.add_constraint(model.sum(x[(i, j)]*pIntC[i]['RVP']
+                                   for i in pInt) - pFinC[j]['RVPmax']*gx[j] <= 0)
+    model.add_constraint(model.sum(x[(i, j)]*pIntC[i]['PAzufre']
+                                   for i in pInt) - pFinC[j]['Azufemax']*gx[j] <= 0)
 
 # Demanda
 for j in pFin:
