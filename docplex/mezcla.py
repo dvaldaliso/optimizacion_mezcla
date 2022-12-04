@@ -1,5 +1,6 @@
 
 from docplex.mp.model import Model
+# https://ibmdecisionoptimization.github.io/docplex-doc
 
 # Datos y Estructuras
 pInt = {'Nvl', 'Np', 'Ref'}
@@ -24,9 +25,10 @@ demandaPF = {
 }
 Destil = 8744
 model = Model(name='Mezcla de Gasolina')
-transferencias = [(i, j) for i in pInt for j in pFin]
 
-#x = model.continuous_var_dict(transferencias, name='x', lb=0)
+# transferencias = [(i, j) for i in pInt for j in pFin]
+# x = model.continuous_var_dict(transferencias, name='x', lb=0)
+
 x = model.continuous_var_matrix(
     keys1=pInt, keys2=pFin, lb=0, name='X')
 ar = model.continuous_var(name='Alimentacion al reformador', lb=0, ub=1526)
@@ -34,11 +36,11 @@ gx = model.continuous_var_dict(pFin, name='gasolina final', lb=0)
 
 # Balance de materiales (Lo que se extrae de los productos intermedios no sobrepasara la existencia)
 model.add_constraint(x['Nvl', 'G83'] + x['Nvl', 'G90'] + x['Nvl', 'G94']
-                     <= pIntC['Nvl']['Rendimiento'] * Destil, ctname='Nafta Virgen Ligera')
+                     <= pIntC['Nvl']['Rendimiento'] * Destil, ctname='MB Nafta Virgen Ligera')
 model.add_constraint(x['Np', 'G83'] + x['Np', 'G90'] + x['Np', 'G94'] +
-                     ar <= pIntC['Np']['Rendimiento'] * Destil, ctname='Nafta Virgen Pesada')
+                     ar <= pIntC['Np']['Rendimiento'] * Destil, ctname='MB Nafta Virgen Pesada')
 model.add_constraint(x['Ref', 'G83'] + x['Ref', 'G90'] + x['Ref', 'G94']
-                     <= pIntC['Ref']['Rendimiento'] * ar, ctname='Reformador')
+                     <= pIntC['Ref']['Rendimiento'] * ar, ctname='MB Reformador')
 
 # gasolinaj
 for j in pFin:
@@ -68,15 +70,45 @@ for j in pFin:
 # Funcion Objetivo
 ganancia_neta = model.sum(pFinC[j]['price']*gx[j] for j in pFin)
 model.set_objective("Max", ganancia_neta)
-print(model.export_to_string())
-model.print_information()
-assert model.solve(), "Solve failed"+str(model.get_solve_status())
-# model.report()
+solucion = model.solve()
+if solucion is None:
+    print("!! Error al resolver el modelo")
 
-#print(model.get_solve_status(), 'Estado de la solucion')
-model.print_solution()
+assert solucion, "Solve failed"+str(model.get_solve_status())
+
+# print(model.export_to_string())
+# model.print_information()
+# model.report()
+# model.print_solution()
 
 # Analisis de sensibilidad
+cantLin = 30
+# Holgura
+n_cons = model.number_of_constraints
+const = [model.get_constraint_by_index(i) for i in range(n_cons)]
+h = model.slack_values(const)
+print('-'*cantLin+'Holguras'+'-'*cantLin)
+for n in range(n_cons):
+    print('holguras: ' +
+          str(const[n].lp_name)+' ->  '+str(h[n]))
+# Precios duales o sombra
+print('-'*cantLin+'Precios Duales'+'-'*cantLin)
+precios_duales = model.dual_values(const)
+for n in range(n_cons):
+    print('precios duales : ' +
+          str(const[n].lp_name)+' es  '+str(precios_duales[n]))
+# Rangos en que el modelo es factible
 cpx = model.get_engine().get_cplex()
 of = cpx.solution.sensitivity.objective()
 b = cpx.solution.sensitivity.rhs()
+print('-'*cantLin+'Costo reducido'+'-'*cantLin)
+var_list = [model.get_var_by_index(i) for i in range(len(x))]
+for n in range(len(var_list)):
+    print('los costos reducidos son. ' +
+          str(var_list[n])+' '+str(var_list[n].reduced_cost))
+print('-'*cantLin+'rango Costo reducido'+'-'*cantLin)
+for n in range(len(var_list)):
+    print('la varaible >' + str(var_list[n])+' '+str(of[n]))
+print('-'*cantLin+'Restricciones de sensibilidad'+'-'*cantLin)
+for n in range(n_cons):
+    print('la varaible ' + str(const[n].lp_name)+' '+str(b[n]))
