@@ -5,12 +5,12 @@ En el Archivo ModeloV2 esta el modelo Matematico
 Tener python, conda
 
 ### Instalación 🔧
-para los ejemplos de pyomo
+#### pyomo
 conda install -c conda-forge pyomo
 
 conda install -c conda-forge ipopt glpk
 
-Para los ejemplos de dcplex
+#### dcplex
 pip install cplex docplex
 
 ## Ejecutando las pruebas ⚙️
