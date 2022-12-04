@@ -14,7 +14,7 @@ Para los ejemplos de dcplex
 pip install cplex docplex
 
 ## Ejecutando las pruebas ⚙️
-# Pyomo
+### Pyomo
 python pyomo_Glpk/main.py
-# Docplex
+### Docplex
 python docplex/mezcla.py
