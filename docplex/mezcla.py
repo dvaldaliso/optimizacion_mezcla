@@ -26,47 +26,57 @@ Destil = 8744
 model = Model(name='Mezcla de Gasolina')
 transferencias = [(i, j) for i in pInt for j in pFin]
 
-x = model.continuous_var_dict(transferencias, name='x', lb=0)
+#x = model.continuous_var_dict(transferencias, name='x', lb=0)
+x = model.continuous_var_matrix(
+    keys1=pInt, keys2=pFin, lb=0, name='X')
 ar = model.continuous_var(name='Alimentacion al reformador', lb=0, ub=1526)
 gx = model.continuous_var_dict(pFin, name='gasolina final', lb=0)
 
 # Balance de materiales (Lo que se extrae de los productos intermedios no sobrepasara la existencia)
-model.add_constraint(x[('Nvl', 'G83')] + x[('Nvl', 'G90')] + x[('Nvl', 'G94')]
+model.add_constraint(x['Nvl', 'G83'] + x['Nvl', 'G90'] + x['Nvl', 'G94']
                      <= pIntC['Nvl']['Rendimiento'] * Destil, ctname='Nafta Virgen Ligera')
-model.add_constraint(x[('Np', 'G83')] + x[('Np', 'G90')] + x[('Np', 'G94')] +
+model.add_constraint(x['Np', 'G83'] + x['Np', 'G90'] + x['Np', 'G94'] +
                      ar <= pIntC['Np']['Rendimiento'] * Destil, ctname='Nafta Virgen Pesada')
-model.add_constraint(x[('Ref', 'G83')] + x[('Ref', 'G90')] + x[('Ref', 'G94')]
+model.add_constraint(x['Ref', 'G83'] + x['Ref', 'G90'] + x['Ref', 'G94']
                      <= pIntC['Ref']['Rendimiento'] * ar, ctname='Reformador')
 
 # gasolinaj
 for j in pFin:
-    model.add_constraint(model.sum(x[(i, j)] for i in pInt) == gx[j])
+    model.add_constraint(model.sum(x[i, j]
+                         for i in pInt) == gx[j], ctname='Gasolina '+j)
 
 # Calidad
 for j in pFin:
-    model.add_constraint(model.sum(x[(i, j)]*pIntC[i]['RBN']
-                         for i in pInt) - pFinC[j]['RBNmin']*gx[j] >= 0)
-    model.add_constraint(model.sum(x[(i, j)]*pIntC[i]['Densidad']
-                                   for i in pInt) - pFinC[j]['Densidadmin']*gx[j] >= 0)
-    model.add_constraint(model.sum(x[(i, j)]*pIntC[i]['RVP']
-                                   for i in pInt) - pFinC[j]['RVPmax']*gx[j] <= 0)
-    model.add_constraint(model.sum(x[(i, j)]*pIntC[i]['PAzufre']
-                                   for i in pInt) - pFinC[j]['Azufemax']*gx[j] <= 0)
+    model.add_constraint(model.sum(x[i, j]*pIntC[i]['RBN']
+                         for i in pInt) - pFinC[j]['RBNmin']*gx[j] >= 0, ctname='Calidad Octano')
+    model.add_constraint(model.sum(x[i, j]*pIntC[i]['Densidad']
+                                   for i in pInt) - pFinC[j]['Densidadmin']*gx[j] >= 0, ctname='Calidad Densidad')
+    model.add_constraint(model.sum(x[i, j]*pIntC[i]['RVP']
+                                   for i in pInt) - pFinC[j]['RVPmax']*gx[j] <= 0, ctname='Calidad Presion de vapor')
+    model.add_constraint(model.sum(x[i, j]*pIntC[i]['PAzufre']
+                                   for i in pInt) - pFinC[j]['Azufemax']*gx[j] <= 0, ctname='Calidad Azufre')
 
 # Demanda
 for j in pFin:
     if isinstance(demandaPF[j]['Min'], (int, float)):
-        model.add_constraint(model.sum(x[(i, j)]
-                             for i in pInt) >= demandaPF[j]['Min'])
+        model.add_constraint(model.sum(x[i, j]
+                             for i in pInt) >= demandaPF[j]['Min'], ctname='Demanda por Min '+j)
     if isinstance(demandaPF[j]['Max'], (int, float)):
-        model.add_constraint(model.sum(x[(i, j)]
-                             for i in pInt) <= demandaPF[j]['Max'])
+        model.add_constraint(model.sum(x[i, j]
+                             for i in pInt) <= demandaPF[j]['Max'], ctname='Demanda por Max '+j)
 
 # Funcion Objetivo
-model.set_objective("Max", model.sum(pFinC[j]['price']*gx[j] for j in pFin))
+ganancia_neta = model.sum(pFinC[j]['price']*gx[j] for j in pFin)
+model.set_objective("Max", ganancia_neta)
 print(model.export_to_string())
 model.print_information()
-model.solve()
-print(model.solve_details)
+assert model.solve(), "Solve failed"+str(model.get_solve_status())
+# model.report()
 
+#print(model.get_solve_status(), 'Estado de la solucion')
 model.print_solution()
+
+# Analisis de sensibilidad
+cpx = model.get_engine().get_cplex()
+of = cpx.solution.sensitivity.objective()
+b = cpx.solution.sensitivity.rhs()
