@@ -1,5 +1,6 @@
 
 from docplex.mp.model import Model
+import pandas as pd
 # https://ibmdecisionoptimization.github.io/docplex-doc
 
 # Datos y Estructuras
@@ -50,13 +51,13 @@ for j in pFin:
 # Calidad
 for j in pFin:
     model.add_constraint(model.sum(x[i, j]*pIntC[i]['RBN']
-                         for i in pInt) - pFinC[j]['RBNmin']*gx[j] >= 0, ctname='Calidad Octano')
+                         for i in pInt) - pFinC[j]['RBNmin']*gx[j] >= 0, ctname='Calidad Octano '+j)
     model.add_constraint(model.sum(x[i, j]*pIntC[i]['Densidad']
-                                   for i in pInt) - pFinC[j]['Densidadmin']*gx[j] >= 0, ctname='Calidad Densidad')
+                                   for i in pInt) - pFinC[j]['Densidadmin']*gx[j] >= 0, ctname='Calidad Densidad '+j)
     model.add_constraint(model.sum(x[i, j]*pIntC[i]['RVP']
-                                   for i in pInt) - pFinC[j]['RVPmax']*gx[j] <= 0, ctname='Calidad Presion de vapor')
+                                   for i in pInt) - pFinC[j]['RVPmax']*gx[j] <= 0, ctname='Calidad Presion de vapor '+j)
     model.add_constraint(model.sum(x[i, j]*pIntC[i]['PAzufre']
-                                   for i in pInt) - pFinC[j]['Azufemax']*gx[j] <= 0, ctname='Calidad Azufre')
+                                   for i in pInt) - pFinC[j]['Azufemax']*gx[j] <= 0, ctname='Calidad Azufre'+j)
 
 # Demanda
 for j in pFin:
@@ -81,34 +82,46 @@ assert solucion, "Solve failed"+str(model.get_solve_status())
 # model.report()
 # model.print_solution()
 
-# Analisis de sensibilidad
+
 cantLin = 30
+
 # Holgura
 n_cons = model.number_of_constraints
 const = [model.get_constraint_by_index(i) for i in range(n_cons)]
 h = model.slack_values(const)
+# La variable no negativa s1 es la holgura (o cantidad no utilizada) del recurso M1
+# La cantidad de S1 representa el exceso de toneladas de la mezcla sobre el mínimo requerido
 print('-'*cantLin+'Holguras'+'-'*cantLin)
 for n in range(n_cons):
     print('holguras: ' +
           str(const[n].lp_name)+' ->  '+str(h[n]))
+
 # Precios duales o sombra
 print('-'*cantLin+'Precios Duales'+'-'*cantLin)
 precios_duales = model.dual_values(const)
 for n in range(n_cons):
     print('precios duales : ' +
           str(const[n].lp_name)+' es  '+str(precios_duales[n]))
+
+# Analisis de sensibilidad
+# El análisis de sensibilidad, que trata de determinar las condiciones que mantendrán inalterada la solución actual.
 # Rangos en que el modelo es factible
 cpx = model.get_engine().get_cplex()
 of = cpx.solution.sensitivity.objective()
 b = cpx.solution.sensitivity.rhs()
+
 print('-'*cantLin+'Costo reducido'+'-'*cantLin)
 var_list = [model.get_var_by_index(i) for i in range(len(x))]
 for n in range(len(var_list)):
     print('los costos reducidos son. ' +
           str(var_list[n])+' '+str(var_list[n].reduced_cost))
-print('-'*cantLin+'rango Costo reducido'+'-'*cantLin)
+
+print('-'*cantLin+'rango variables estando el problema optimo'+'-'*cantLin)
 for n in range(len(var_list)):
     print('la varaible >' + str(var_list[n])+' '+str(of[n]))
+
 print('-'*cantLin+'Restricciones de sensibilidad'+'-'*cantLin)
 for n in range(n_cons):
-    print('la varaible ' + str(const[n].lp_name)+' '+str(b[n]))
+    print('lado ' + str(const[n].lp_name)+' '+str(b[n]))
+
+# Análisis postóptimo, que trata de encontrar una nueva solución óptima cuando cambian los datos del del modelo.
