@@ -4,6 +4,11 @@ import sympy as sp
 from sympy.matrices import Matrix, eye, zeros, ones, diag, GramSchmidt
 import Utilsimplex as util
 
+# El metodo utilizado aqui es el de la M
+# Es recomendabe usar el metodo de las 2s fases que en la fase1  elimina las varaibles artificiales minimizando
+# la suma de las variables artificiales y el resto del problema igual, luego este
+# si es factible pasa a la fase 2 que es resolver el problema con el simplex.
+
 # Max z= 5x1 + 4x2
 #       2x1 +  x2 <= 20
 #        x1 +  x2 <= 18

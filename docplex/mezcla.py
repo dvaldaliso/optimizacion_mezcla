@@ -97,6 +97,10 @@ for n in range(n_cons):
           str(const[n].lp_name)+' ->  '+str(h[n]))
 
 # Precios duales o sombra
+# El nombre valor unitario de un recurso es una descripción adecuada de la
+# tasa de cambio de la función objetivo por unidad de cambio de un recurso.
+# función objetivo por unidad de cambio de un recurso. No obstante, los primeros
+# desarrollos de LP acuñaron el nombre abstracto de precio dual (o sombra)
 print('-'*cantLin+'Precios Duales'+'-'*cantLin)
 precios_duales = model.dual_values(const)
 for n in range(n_cons):
@@ -110,18 +114,26 @@ cpx = model.get_engine().get_cplex()
 of = cpx.solution.sensitivity.objective()
 b = cpx.solution.sensitivity.rhs()
 
+# Sensibilidad de la solución óptima a los cambios en la disponibilidad de los recursos
+# (lado derecho de las restricciones)
 print('-'*cantLin+'Costo reducido'+'-'*cantLin)
 var_list = [model.get_var_by_index(i) for i in range(len(x))]
 for n in range(len(var_list)):
     print('los costos reducidos son. ' +
           str(var_list[n])+' '+str(var_list[n].reduced_cost))
 
-print('-'*cantLin+'rango variables estando el problema optimo'+'-'*cantLin)
+# Sensibilidad de la solución óptima a las variaciones del beneficio unitario o del coste unitario
+# (coeficientes de la función objetivo)
+print('-'*cantLin+'SENSIBILIDAD FO'+'-'*cantLin)
 for n in range(len(var_list)):
     print('la varaible >' + str(var_list[n])+' '+str(of[n]))
 
-print('-'*cantLin+'Restricciones de sensibilidad'+'-'*cantLin)
-for n in range(n_cons):
-    print('lado ' + str(const[n].lp_name)+' '+str(b[n]))
 
-# Análisis postóptimo, que trata de encontrar una nueva solución óptima cuando cambian los datos del del modelo.
+print('-'*cantLin+'SENSIBILIDAD LADO DERECHO'+'-'*cantLin)
+for n in range(n_cons):
+    print(
+        'El precio dual de {}  sigue siendo válido sólo en el rango'.format(precios_duales[n]))
+    print('lado ' + str(const[n].lp_name)+' '+str(b[n]))
+    print('--')
+
+# Análisis postóptimo, que trata de encontrar una nueva solución óptima cuando cambian los datos del modelo.
