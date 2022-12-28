@@ -23,9 +23,9 @@ def run(pInt, pFin, pIntC, pFinC, demandaPF, Destil):
     model.add_constraint(x['Ref', '83'] + x['Ref', '90'] + x['Ref', '94']
                          <= pIntC['Ref']['Rendimiento'] * ar, ctname='MB Reformador')
     model.add_constraint(x['Ni', '83'] + x['Ni', '90'] + x['Ni', '94'] + x['Ni', 'Nex']
-                         <= pIntC['Ni']['Rendimiento'] * ar, ctname='MB Reformador')
+                         <= pIntC['Ni']['Rendimiento'], ctname='MB Nafta Importada')
     model.add_constraint(x['Ncraq', '83'] + x['Ncraq', '90'] + x['Ncraq', '94'] + x['Ncraq', 'Nex']
-                         <= pIntC['Ncraq']['Rendimiento'] * ar, ctname='MB Reformador')
+                         <= pIntC['Ncraq']['Rendimiento'], ctname='MB Nafta Craqueda')
 
     # gasolinaj
     for j in pFin:
