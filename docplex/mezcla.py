@@ -42,11 +42,11 @@ def run(pInt, pFin, pIntC, pFinC, demandaPF, Destil):
     # Demanda
     for j in pFin:
         if isinstance(demandaPF[j]['Min'], (int, float)):
-            model.add_constraint(model.sum(x[i, j]
-                                 for i in pInt) >= demandaPF[j]['Min'], ctname='Demanda por Min '+j)
+            model.add_constraint(gx[j] >= demandaPF[j]
+                                 ['Min'], ctname='Demanda por Min '+j)
         if isinstance(demandaPF[j]['Max'], (int, float)):
-            model.add_constraint(model.sum(x[i, j]
-                                 for i in pInt) <= demandaPF[j]['Max'], ctname='Demanda por Max '+j)
+            model.add_constraint(gx[j] <= demandaPF[j]
+                                 ['Max'], ctname='Demanda por Max '+j)
 
     # Funcion Objetivo
     ganancia_neta = model.sum(pFinC[j]['price']*gx[j] for j in pFin)
@@ -121,7 +121,6 @@ def run(pInt, pFin, pIntC, pFinC, demandaPF, Destil):
         result_rango_duales[const[n].lp_name] = {
             str(precios_duales[n]): str(b[n])}
     return result
-
 
     # Análisis postóptimo, que trata de encontrar una nueva solución óptima cuando cambian los datos del modelo.
 if (__name__ == '__main__'):
