@@ -59,14 +59,13 @@ def run(pInt, pFin, pIntC, pFinC, demandaPF, Destil):
     ganancia_neta = model.sum(pFinC[j]['price']*gx[j] for j in pFin)
     model.set_objective("Max", ganancia_neta)
     solucion = model.solve()
-    print(model.export_to_string())
+
     if solucion is None:
         print("!! Error al resolver el modelo")
-
+        print(model.export_to_string())
         return -1
     assert solucion, "Solve failed"+str(model.get_solve_status())
 
-    # print(model.export_to_string())
     # model.print_information()
     # model.report()
     model.print_solution()
@@ -130,6 +129,7 @@ def run(pInt, pFin, pIntC, pFinC, demandaPF, Destil):
         result_rango_duales[const[n].lp_name] = {
             str(precios_duales[n]): str(b[n])}
     return result
+
 
     # Análisis postóptimo, que trata de encontrar una nueva solución óptima cuando cambian los datos del modelo.
 if (__name__ == '__main__'):
