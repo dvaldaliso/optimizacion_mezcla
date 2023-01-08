@@ -18,3 +18,9 @@ pip install cplex docplex
 python pyomo_Glpk/main.py
 ### Docplex
 python docplex/mezcla.py
+## Pandas
+### Leer datos del assay
+pip install pandas
+pip install openpyxl
+
+
