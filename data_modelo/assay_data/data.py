@@ -1,7 +1,9 @@
 import pandas as pd
-import util as u
+# Para el caso que se vaya a ejcutar el ficher
+#import util as u
+from . import util as u
 data = pd.read_excel(
-    '/home/desarrollo/Documents/Proyectos/Tesis/Algoritmo python/assay_data/assayData.csv')
+    '/home/desarrollo/Documents/Proyectos/Tesis/Algoritmopython/data_modelo/assay_data/assayData.csv')
 
 
 def datos(fc2, destil, crudos_precio):

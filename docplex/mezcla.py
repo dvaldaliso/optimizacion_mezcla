@@ -1,6 +1,4 @@
-
 from docplex.mp.model import Model
-# https://ibmdecisionoptimization.github.io/docplex-doc
 
 
 def run(pInt, pFin, pIntC, pFinC, demandaPF, Destil):
@@ -131,8 +129,12 @@ def run(pInt, pFin, pIntC, pFinC, demandaPF, Destil):
     return result
 
 
+def test():
+    print('hello')
+
     # Análisis postóptimo, que trata de encontrar una nueva solución óptima cuando cambian los datos del modelo.
 if (__name__ == '__main__'):
+
     # Datos y Estructuras
     pInt = {'Nvl', 'Np', 'Ref', 'Ni', 'Ncraq'}
     pFin = {'83', '90', '94', 'Nex'}
