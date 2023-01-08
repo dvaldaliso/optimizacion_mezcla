@@ -134,9 +134,14 @@ def setData(data):
     return data
 
 
+def getData(fc2, destil, crudos_precio):
+    data = ad.datos(fc2, destil, crudos_precio)
+    return setData(data)
+
+
 if (__name__ == '__main__'):
     fc2 = 0.200
     destil = 8744
     crudos_precio = {'Ural': 2352.059*6.2898, 'Leona': 2303.83*6.2898}
-    data = ad.datos(fc2, destil, crudos_precio)
-    setData(data)
+    data = getData(fc2, destil, crudos_precio)
+    print(data)
