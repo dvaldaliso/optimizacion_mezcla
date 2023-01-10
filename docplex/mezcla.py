@@ -1,5 +1,10 @@
+import os
+import sys
+from pathlib import Path
 from docplex.mp.model import Model
-
+BASE_DIR = Path(__file__).resolve().parent.parent
+sys.path.append(os.path.join(BASE_DIR, 'data_modelo'))
+import model_data as md
 
 def run(pInt, pFin, pIntC, pFinC, demandaPF, Destil):
 
@@ -132,6 +137,7 @@ def run(pInt, pFin, pIntC, pFinC, demandaPF, Destil):
 def test():
     print('hello')
 
+
     # Análisis postóptimo, que trata de encontrar una nueva solución óptima cuando cambian los datos del modelo.
 if (__name__ == '__main__'):
 
@@ -146,6 +152,11 @@ if (__name__ == '__main__'):
         'Ni': {'Rendimiento': 0, 'RBN': 0, 'IMPVR': 0, 'PAzufre': 0, 'Densidad': 0},
         'Ncraq': {'Rendimiento': 0, 'RBN': 0, 'IMPVR': 0, 'PAzufre': 0, 'Densidad': 0}
     }
+    # traer datos del Assat
+    fc2 = 0.200
+    destil = 8744
+    crudos_precio = {'Ural': 2352.059*6.2898, 'Leona': 2303.83*6.2898}
+    md.getData(fc2, destil, crudos_precio)
     # productos Finales caracterisiticas
     pFinC = {
         '83': {'price': 22371, 'RBNmin': 58.89, 'IMPVRmax': 0.617498832595756, 'Azufemax': 1000, 'Densidadmin': 0.7200},
