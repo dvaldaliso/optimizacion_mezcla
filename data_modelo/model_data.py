@@ -136,9 +136,9 @@ def setData(data):
 
 def getData(fc2, destil, crudos_precio):
     data = ad.datos(fc2, destil, crudos_precio)
-    dataToModel = setData(data).set_index('PI')
+    dataToModel = setData(data)
     # Eliminar valores no necesarios para el modelo
-    dataToModel.drop(['NVM', 'NVP'], inplace=True)
+    dataToModel.drop([1, 2], inplace=True)
 
     dataToModel.rename(columns={'Dens, TON/M3': 'Densidad'}, inplace=True)
     # Declare a list that is to be converted into a column
@@ -150,7 +150,6 @@ def getData(fc2, destil, crudos_precio):
     dataToModel['PAzufre'] = PAzufre
     dataToModel.drop(['TPD', 'm3/d', 'Azufre, PPM', 'RON', 'RVP, atm', 'Naft. % Vol', 'Arom. %Vol'],
                      axis=1, inplace=True)
-    dataToModel = dataToModel.T.to_dict()
 
     return dataToModel
 

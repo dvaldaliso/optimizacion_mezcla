@@ -2,6 +2,7 @@ import os
 import sys
 from pathlib import Path
 from docplex.mp.model import Model
+import pandas as pd
 BASE_DIR = Path(__file__).resolve().parent.parent
 sys.path.append(os.path.join(BASE_DIR, 'data_modelo'))
 import model_data as md
@@ -156,7 +157,21 @@ if (__name__ == '__main__'):
     fc2 = 0.200
     destil = 8744
     crudos_precio = {'Ural': 2352.059*6.2898, 'Leona': 2303.83*6.2898}
-    md.getData(fc2, destil, crudos_precio)
+    data = md.getData(fc2, destil, crudos_precio)
+    importados = {'PI': ['Ni', 'Ncraq'],
+                  'Rendimiento': [0, 0],
+                  'RBN': [0, 0],
+                  'IMPVR': [0, 0],
+                  'PAzufre': [0, 0],
+                  'Densidad': [0, 0,]
+                  }
+    importadosdf = pd.DataFrame(importados)
+
+    data = pd.concat([data, importadosdf], ignore_index=True)
+    data = data.set_index('PI')
+    data.rename(index={"NVL": "Nvl"},
+                inplace=True)
+    pIntC = data.T.to_dict()
     # productos Finales caracterisiticas
     pFinC = {
         '83': {'price': 22371, 'RBNmin': 58.89, 'IMPVRmax': 0.617498832595756, 'Azufemax': 1000, 'Densidadmin': 0.7200},
