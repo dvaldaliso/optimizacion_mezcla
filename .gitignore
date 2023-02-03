@@ -1,9 +1,6 @@
 /gasolina/
 simplex.py
+*.pyc
+*.pyo
 
-data_modelo/__pycache__/
-data_modelo/assay_data/__pycache__/ 
-data_modelo/assay_data/__pycache__/
-data_modelo/assay_data/__pycache__/
-docplex/__pycache__/
 
