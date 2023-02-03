@@ -1,39 +1,7 @@
+# Byte-compiled / optimized / DLL files
 /gasolina/
 simplex.py
-*.pyc
-*.pyo
 
-
-Skip to content
-Search or jump to…
-Pull requests
-Issues
-Codespaces
-Marketplace
-Explore
- 
-@dvaldaliso 
-github
-/
-gitignore
-Public
-Fork your own copy of github/gitignore
-Code
-Pull requests
-371
-Actions
-Security
-Insights
-gitignore/Python.gitignore
-@astrojuanlu
-astrojuanlu Update Python.gitignore
-Latest commit 8e67b94 on Feb 20, 2022
- History
- 90 contributors
-@arcresu@shiftkey@jwg4@astrojuanlu@GabrielC101@misaelnieto@pmsosa@svkampen@vltr@thedrow@matheussl@Lucretiel
-160 lines (131 sloc)  3.01 KB
-
-# Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
 *$py.class
@@ -193,18 +161,8 @@ cython_debug/
 #  and can be added to the global gitignore or merged into this file.  For a more nuclear
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
-Footer
-© 2023 GitHub, Inc.
-Footer navigation
-Terms
-Privacy
-Security
-Status
-Docs
-Contact GitHub
-Pricing
-API
-Training
-Blog
-About
-gitignore/Python.gitignore at main · github/gitignore
+data_modelo/__pycache__/model_data.cpython-39.pyc
+data_modelo/assay_data/__pycache__/__init__.cpython-39.pyc
+data_modelo/assay_data/__pycache__/data.cpython-39.pyc
+data_modelo/assay_data/__pycache__/util.cpython-39.pyc
+docplex/__pycache__/model_externo.cpython-39.pyc
