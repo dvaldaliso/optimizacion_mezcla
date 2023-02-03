@@ -1,11 +1,8 @@
-import os
-import sys
-from pathlib import Path
+from model_externo import *
+import model_data as md
 from docplex.mp.model import Model
 import pandas as pd
-BASE_DIR = Path(__file__).resolve().parent.parent
-sys.path.append(os.path.join(BASE_DIR, 'data_modelo'))
-import model_data as md
+
 
 def run(pInt, pFin, pIntC, pFinC, demandaPF, Destil):
 
@@ -138,7 +135,6 @@ def run(pInt, pFin, pIntC, pFinC, demandaPF, Destil):
 def test():
     print('hello')
 
-
     # Análisis postóptimo, que trata de encontrar una nueva solución óptima cuando cambian los datos del modelo.
 if (__name__ == '__main__'):
 
@@ -171,7 +167,7 @@ if (__name__ == '__main__'):
     data = data.set_index('PI')
     data.rename(index={"NVL": "Nvl"},
                 inplace=True)
-    pIntC = data.T.to_dict()
+    #pIntC = data.T.to_dict()
     # productos Finales caracterisiticas
     pFinC = {
         '83': {'price': 22371, 'RBNmin': 58.89, 'IMPVRmax': 0.617498832595756, 'Azufemax': 1000, 'Densidadmin': 0.7200},
