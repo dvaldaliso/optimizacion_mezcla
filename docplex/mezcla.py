@@ -17,12 +17,15 @@ def run(pInt, pFin, pIntC, pFinC, demandaPF, Destil):
     gx = model.continuous_var_dict(pFin, name='gasolina final', lb=0)
 
     # Balance de materiales (Lo que se extrae de los productos intermedios no sobrepasara la existencia)
+    # flujos
     model.add_constraint(x['Nvl', '83'] + x['Nvl', '90'] + x['Nvl', '94'] + x['Nvl', 'Nex']
                          <= pIntC['Nvl']['Rendimiento'] * Destil, ctname='MB Nafta Virgen Ligera')
     model.add_constraint(x['Np', '83'] + x['Np', '90'] + x['Np', '94'] +
                          ar <= pIntC['Np']['Rendimiento'] * Destil, ctname='MB Nafta Virgen Pesada')
+    # Reformador o Pool
     model.add_constraint(x['Ref', '83'] + x['Ref', '90'] + x['Ref', '94']
                          <= pIntC['Ref']['Rendimiento'] * ar, ctname='MB Reformador')
+    # Productos importados
     model.add_constraint(x['Ni', '83'] + x['Ni', '90'] + x['Ni', '94'] + x['Ni', 'Nex']
                          <= pIntC['Ni']['Rendimiento'], ctname='MB Nafta Importada')
     model.add_constraint(x['Ncraq', '83'] + x['Ncraq', '90'] + x['Ncraq', '94'] + x['Ncraq', 'Nex']
