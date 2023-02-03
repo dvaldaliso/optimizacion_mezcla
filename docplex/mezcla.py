@@ -134,10 +134,6 @@ def run(pInt, pFin, pIntC, pFinC, demandaPF, Destil):
             str(precios_duales[n]): str(b[n])}
     return result
 
-
-def test():
-    print('hello')
-
     # Análisis postóptimo, que trata de encontrar una nueva solución óptima cuando cambian los datos del modelo.
 if (__name__ == '__main__'):
 
