@@ -89,10 +89,13 @@ def run(pInt, pFin, pIntC, pFinC, demandaPF, Destil):
     # La cantidad de S1 representa el exceso de toneladas de la mezcla sobre el mínimo requerido
     print('-'*cantLin+'Holguras'+'-'*cantLin)
 
-    result_holguras = {}
+    name_holgura = []
+    valor_holgura = []
     for n in range(n_cons):
-        result_holguras[const[n].lp_name] = h[n]
-    # print(result_holguras)
+        name_holgura.append(const[n].lp_name)
+        valor_holgura.append(h[n])
+    # load data into a DataFrame object:
+    result_holguras = {"nombre": name_holgura, "valor": valor_holgura}
 
     # Precios duales o sombra
     # El nombre valor unitario de un recurso es una descripción adecuada de la
@@ -101,9 +104,12 @@ def run(pInt, pFin, pIntC, pFinC, demandaPF, Destil):
     # desarrollos de LP acuñaron el nombre abstracto de precio dual (o sombra)
     print('-'*cantLin+'Precios Duales'+'-'*cantLin)
     precios_duales = model.dual_values(const)
-    result_duales = {}
+    name_duales = []
+    valor_duales = []
     for n in range(n_cons):
-        result_duales[const[n].lp_name] = precios_duales[n]
+        name_duales.append(const[n].lp_name)
+        valor_duales.append(precios_duales[n])
+    result_duales = {"nombre": name_duales, "valor": valor_duales}
 
     # Analisis de sensibilidad
     # El análisis de sensibilidad, que trata de determinar las condiciones que mantendrán inalterada la solución actual.
@@ -115,23 +121,40 @@ def run(pInt, pFin, pIntC, pFinC, demandaPF, Destil):
     # Sensibilidad de la solución óptima a los cambios en la disponibilidad de los recursos
     # (lado derecho de las restricciones)
     print('-'*cantLin+'Costo reducido'+'-'*cantLin)
-    var_list = [model.get_var_by_index(i) for i in range(len(x))]
-    result_costos_reducidos = {}
+    var_list = [model.get_var_by_index(i) for i in range(len(x)+len(gx)+1)]
+    name_costos_reducidos = []
+    valor_costos_reducidos = []
     for n in range(len(var_list)):
-        result_costos_reducidos[str(var_list[n])] = var_list[n].reduced_cost
-
+        name_costos_reducidos.append(str(var_list[n]))
+        valor_costos_reducidos.append(var_list[n].reduced_cost)
+    result_costos_reducidos = {
+        "nombre": name_costos_reducidos, "valor": valor_costos_reducidos}
+    df = pd.DataFrame(result_costos_reducidos)
     # Sensibilidad de la solución óptima a las variaciones del beneficio unitario o del coste unitario
     # (coeficientes de la función objetivo)
     print('-'*cantLin+'SENSIBILIDAD FO'+'-'*cantLin)
-    result_sensibilidad_FO = {}
+
+    name_sensibilidad_FO = []
+    valor_sensibilidad_FO = []
     for n in range(len(var_list)):
-        result_sensibilidad_FO[var_list[n]] = of[n]
+        name_sensibilidad_FO.append(var_list[n])
+        valor_sensibilidad_FO.append(of[n])
+
+    result_sensibilidad_FO = {
+        "nombre": name_sensibilidad_FO, "valor": valor_sensibilidad_FO}
 
     print('-'*cantLin+'SENSIBILIDAD LADO DERECHO'+'-'*cantLin)
     result_rango_duales = {}
+    name_rango_ladoDerecho = []
+    valor_rango_ladoDerecho = []
     for n in range(n_cons):
+        name_rango_ladoDerecho.append(const[n].lp_name)
+        valor_rango_ladoDerecho.append(str(b[n]))
         result_rango_duales[const[n].lp_name] = {
             str(precios_duales[n]): str(b[n])}
+    result_rango_ladoDerecho = {
+        "nombre": name_rango_ladoDerecho, "valor": valor_rango_ladoDerecho}
+    print(df)
     return result
 
     # Análisis postóptimo, que trata de encontrar una nueva solución óptima cuando cambian los datos del modelo.
