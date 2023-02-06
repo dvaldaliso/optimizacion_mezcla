@@ -88,7 +88,8 @@ def run(pInt, pFin, pIntC, pFinC, demandaPF, Destil):
     # La variable no negativa s1 es la holgura (o cantidad no utilizada) del recurso M1
     # La cantidad de S1 representa el exceso de toneladas de la mezcla sobre el mínimo requerido
     print('-'*cantLin+'Holguras'+'-'*cantLin)
-
+    for n in range(len(lhs_model)):
+        print(lhs_model[n])
     name_holgura = []
     valor_holgura = []
     for n in range(n_cons):
@@ -117,7 +118,12 @@ def run(pInt, pFin, pIntC, pFinC, demandaPF, Destil):
     cpx = model.get_engine().get_cplex()
     of = cpx.solution.sensitivity.objective()
     b = cpx.solution.sensitivity.rhs()
-
+    lb = cpx.solution.sensitivity.lower_bounds()
+    ub = cpx.solution.sensitivity.upper_bounds()
+    bounds = cpx.solution.sensitivity.bounds()
+    names = cpx.linear_constraints.get_names()
+    indexConstraint = names.index("MB Reformador")
+    print("right info for the constraint ", b[indexConstraint])
     # Sensibilidad de la solución óptima a los cambios en la disponibilidad de los recursos
     # (lado derecho de las restricciones)
     print('-'*cantLin+'Costo reducido'+'-'*cantLin)
@@ -129,7 +135,7 @@ def run(pInt, pFin, pIntC, pFinC, demandaPF, Destil):
         valor_costos_reducidos.append(var_list[n].reduced_cost)
     result_costos_reducidos = {
         "nombre": name_costos_reducidos, "valor": valor_costos_reducidos}
-    df = pd.DataFrame(result_costos_reducidos)
+
     # Sensibilidad de la solución óptima a las variaciones del beneficio unitario o del coste unitario
     # (coeficientes de la función objetivo)
     print('-'*cantLin+'SENSIBILIDAD FO'+'-'*cantLin)
@@ -141,7 +147,9 @@ def run(pInt, pFin, pIntC, pFinC, demandaPF, Destil):
         valor_sensibilidad_FO.append(of[n])
 
     result_sensibilidad_FO = {
-        "nombre": name_sensibilidad_FO, "valor": valor_sensibilidad_FO}
+        "nombre": name_sensibilidad_FO, "costo_reducido": valor_costos_reducidos, "valor": valor_sensibilidad_FO}
+    df = pd.DataFrame(result_sensibilidad_FO)
+    print(df)
 
     print('-'*cantLin+'SENSIBILIDAD LADO DERECHO'+'-'*cantLin)
     result_rango_duales = {}
@@ -150,12 +158,33 @@ def run(pInt, pFin, pIntC, pFinC, demandaPF, Destil):
     for n in range(n_cons):
         name_rango_ladoDerecho.append(const[n].lp_name)
         valor_rango_ladoDerecho.append(str(b[n]))
-        result_rango_duales[const[n].lp_name] = {
-            str(precios_duales[n]): str(b[n])}
+
     result_rango_ladoDerecho = {
-        "nombre": name_rango_ladoDerecho, "valor": valor_rango_ladoDerecho}
-    print(df)
+        "nombre": name_rango_ladoDerecho, 'duales': valor_duales, "valor": valor_rango_ladoDerecho}
+
+    print('-'*cantLin+'SENSIBILIDAD Bounds'+'-'*cantLin)
+    name_bounds = []
+    valor_bounds = []
+    for n in range(n_cons-1):
+        name_bounds.append(const[n].lp_name)
+        valor_bounds.append(str(ub[n]))
+    result_bounds = {
+        "nombre": name_bounds, "valor": valor_bounds}
+
     return result
+# matriz optimia
+
+
+def matriz_optima(model):
+    print('-----Matriz Soluction Optima-----------')
+    cp = model.get_cplex()
+
+    for fila in cp.solution.advanced.binvarow():
+        print(fila)
+    print('-'*8)
+    for fila in cp.solution.advanced.binvrow():
+        print(fila)
+
 
     # Análisis postóptimo, que trata de encontrar una nueva solución óptima cuando cambian los datos del modelo.
 if (__name__ == '__main__'):
