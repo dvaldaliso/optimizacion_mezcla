@@ -2,6 +2,8 @@ from model_externo import *
 import model_data as md
 from docplex.mp.model import Model
 import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
 
 
 def run(pInt, pFin, pIntC, pFinC, demandaPF, Destil):
@@ -43,8 +45,9 @@ def run(pInt, pFin, pIntC, pFinC, demandaPF, Destil):
     # Calidad
     for j in pFin:
         if j != 'Nex':
+            octanomin = 0 if j == '94' else 0
             model.add_constraint(model.sum(x[i, j]*pIntC[i]['RBN']
-                                           for i in pInt) - pFinC[j]['RBNmin']*gx[j] >= 0, ctname='Calidad Octano min '+j)
+                                           for i in pInt) - pFinC[j]['RBNmin']*gx[j] >= octanomin, ctname='Calidad Octano min '+j)
             densidad = model.add_constraint(model.sum(x[i, j]*pIntC[i]['Densidad']
                                                       for i in pInt) - pFinC[j]['Densidadmin']*gx[j] >= 0, ctname='Calidad Densidad min'+j)
             model.add_constraint(model.sum(x[i, j]*pIntC[i]['IMPVR']
@@ -91,16 +94,15 @@ def run(pInt, pFin, pIntC, pFinC, demandaPF, Destil):
 
     # Numero Restricciones
     n_cons = model.number_of_constraints
-    # Lista de restriccinoes
+    # Lista de restricciones
     const = [model.get_constraint_by_index(i) for i in range(n_cons)]
 
-    h = model.slack_values(const)
     # La variable no negativa s1 es la holgura (o cantidad no utilizada) del recurso M1
     # La cantidad de S1 representa el exceso de toneladas de la mezcla sobre el mínimo requerido
 
     restricciones_lhs = restriccionesLhs(model, n_cons)
 
-    result_holguras = holgura(n_cons, const, h, cantLin)
+    result_holguras = holgura(n_cons, const, model, cantLin)
 
     # Precios duales o sombra
     # El nombre valor unitario de un recurso es una descripción adecuada de la
@@ -136,15 +138,80 @@ def run(pInt, pFin, pIntC, pFinC, demandaPF, Destil):
     # (coeficientes de la función objetivo)
 
     result_sensibilidad_FO = sensibilidad_FO(
-        var_list, of, costos_reducidos, cantLin, result_list, model, ganancia_neta)
+        var_list, of, costos_reducidos, cantLin, result_list, ganancia_neta)
 
     sensibilidad_rhs = sensibilidadRHS(
-        n_cons, b, valor_duales, const, cantLin)
+        n_cons, b, valor_duales, const, model, cantLin)
     df = pd.DataFrame(sensibilidad_rhs)
-    # print(df)
+    print(df)
     result_bounds = ubSensibilidad(n_cons, const, bounds, cantLin)
+    graficarResult(result)
 
     return result
+
+
+def getResult(resultado):
+    result = {'Nvl': [], 'Np': [], 'Ref': [], 'Ni': [], 'Ncraq': []}
+    for index in result:
+        for x in resultado['solucion']:
+            if index not in x:
+                continue
+            if x[2] == '83':
+                result[index].insert(0, round(x[3], 2))
+            if x[2] == '90':
+                result[index].insert(1, round(x[3], 2))
+            if x[2] == '94':
+                result[index].insert(2, round(x[3], 2))
+            if x[2] == 'Nex':
+                result[index].insert(3, round(x[3], 2))
+    return result
+
+
+def graficarResult(result):
+    # set width of bars
+    barWidth = 0.20
+    resultData = getResult(result)
+    # set heights of bars
+    Nvl = resultData['Nvl']
+    Np = resultData['Np']
+    Ref = resultData['Ref']
+    Ni = resultData['Ni']
+    Ncraq = resultData['Ncraq']
+    bart = Nvl+Np+Ref+Ni+Ncraq
+
+    # Set position of bar on X axis
+    r1 = np.arange(len(Nvl))
+    r2 = [x + barWidth for x in r1]
+    r3 = [x + barWidth for x in r2]
+    r4 = [x + barWidth for x in r3]
+    r5 = [x + barWidth for x in r4]
+    r6 = np.concatenate((r1, r2, r3, r4, r5), axis=None)
+
+    # Make the plot
+    plt.bar(r1, Nvl, color='#7f6d5f', width=barWidth,
+            edgecolor='white', label='Nafta Virgen Ligera')
+    plt.bar(r2, Np, color='#557f2d', width=barWidth,
+            edgecolor='white', label='Nafta Pesada')
+    plt.bar(r3, Ref, color='#2d7f5e', width=barWidth,
+            edgecolor='white', label='Reformada')
+    plt.bar(r4, Ni, color='lightgreen', width=barWidth,
+            edgecolor='white', label='Nafta Importada')
+    plt.bar(r5, Ncraq, color='cadetblue', width=barWidth,
+            edgecolor='white', label='Nafta Craqueada')
+
+    # Text on the top of each bar
+    for i in range(len(r6)):
+        plt.text(x=r6[i]-0.10, y=bart[i]+0.1, s=bart[i]
+                 if bart[i] != 0 else '', size=10)
+    # Add xticks on the middle of the group bars
+    plt.xlabel('Gasolinas', fontweight='bold')
+    plt.ylabel("Mezcla")
+    plt.xticks([r + barWidth for r in range(len(Nvl))],
+               ['83', '90', '94', 'Nexe'])
+
+    # Create legend & Show graphic
+    plt.legend()
+    plt.show()
 
 
 def getCoeficientesOBJ(obj):
@@ -194,17 +261,19 @@ def ubSensibilidad(n_cons, const, ub, cantLin):
     return {"nombre": name_bounds, "valor": valor_bounds}
 
 
-def sensibilidadRHS(n_cons, b, valor_duales, const, cantLin):
+def sensibilidadRHS(n_cons, b, valor_duales, const, model, cantLin):
     print('-'*cantLin+'SENSIBILIDAD LADO DERECHO'+'-'*cantLin)
     name_rango_ladoDerecho = []
     valor_rango_ladoDerecho = []
+    rhs = []
     for n in range(n_cons):
         name_rango_ladoDerecho.append(const[n].lp_name)
         valor_rango_ladoDerecho.append(str(b[n]))
-    return {"nombre": name_rango_ladoDerecho, 'duales': valor_duales, "valor": valor_rango_ladoDerecho}
+        rhs.append(model.get_constraint_by_name(const[n].lp_name).rhs)
+    return {"nombre": name_rango_ladoDerecho, 'duales': valor_duales, "RHS": rhs, "valor": valor_rango_ladoDerecho}
 
 
-def sensibilidad_FO(var_list, of, costos_reducidos, cantLin, result_list, model, obj):
+def sensibilidad_FO(var_list, of, costos_reducidos, cantLin, result_list, obj):
     print('-'*cantLin+'SENSIBILIDAD FO'+'-'*cantLin)
     name_sensibilidad_FO = []
     valor_sensibilidad_FO = []
@@ -238,8 +307,9 @@ def preciosDuales(model, const, n_cons, cantLin):
     return {"nombre": name_duales, "valor": valor_duales}, valor_duales
 
 
-def holgura(n_cons, const, h, cantLin):
+def holgura(n_cons, const, model, cantLin):
     print('-'*cantLin+'Holguras'+'-'*cantLin)
+    h = model.slack_values(const)
     name_holgura = []
     valor_holgura = []
     for n in range(n_cons):
