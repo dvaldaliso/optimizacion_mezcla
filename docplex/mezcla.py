@@ -38,17 +38,19 @@ def run(pInt, pFin, pIntC, pFinC, demandaPF, Destil):
                                            for i in pInt) == gx[j], ctname='Gasolina '+j)
     model.add_constraint(x['Nvl', 'Nex']+x['Ni', 'Nex'] +
                          x['Ncraq', 'Nex'] == gx['Nex'], ctname='Nafta exceso')
+
+    densidad = ''
     # Calidad
     for j in pFin:
         if j != 'Nex':
             model.add_constraint(model.sum(x[i, j]*pIntC[i]['RBN']
-                                           for i in pInt) - pFinC[j]['RBNmin']*gx[j] >= 0, ctname='Calidad Octano '+j)
-            model.add_constraint(model.sum(x[i, j]*pIntC[i]['Densidad']
-                                           for i in pInt) - pFinC[j]['Densidadmin']*gx[j] >= 0, ctname='Calidad Densidad '+j)
+                                           for i in pInt) - pFinC[j]['RBNmin']*gx[j] >= 0, ctname='Calidad Octano min '+j)
+            densidad = model.add_constraint(model.sum(x[i, j]*pIntC[i]['Densidad']
+                                                      for i in pInt) - pFinC[j]['Densidadmin']*gx[j] >= 0, ctname='Calidad Densidad min'+j)
             model.add_constraint(model.sum(x[i, j]*pIntC[i]['IMPVR']
-                                           for i in pInt) - pFinC[j]['IMPVRmax']*gx[j] <= 0, ctname='Calidad Presion de vapor '+j)
+                                           for i in pInt) - pFinC[j]['IMPVRmax']*gx[j] <= 0, ctname='Calidad Presion de vapor max '+j)
             model.add_constraint(model.sum(x[i, j]*pIntC[i]['PAzufre']
-                                           for i in pInt) - pFinC[j]['Azufemax']*gx[j] <= 0, ctname='Calidad Azufre'+j)
+                                           for i in pInt) - pFinC[j]['Azufemax']*gx[j] <= 0, ctname='Calidad Azufre max'+j)
 
     # Demanda
     for j in pFin:
@@ -60,8 +62,16 @@ def run(pInt, pFin, pIntC, pFinC, demandaPF, Destil):
                                  ['Max'], ctname='Demanda por Max '+j)
 
     # Funcion Objetivo
-    ganancia_neta = model.sum(pFinC[j]['price']*gx[j] for j in pFin)
+    def pintsum(j):
+        pIntaux = pInt
+        if j == 'Nex':
+            pIntaux = {'Nvl', 'Ni', 'Ncraq'}
+        return sum(x[i, j] for i in pIntaux)
+
+    ganancia_neta = model.sum(pFinC[j]['price'] * pintsum(j) for j in pFin)
+
     model.set_objective("Max", ganancia_neta)
+
     solucion = model.solve()
 
     if solucion is None:
@@ -69,51 +79,43 @@ def run(pInt, pFin, pIntC, pFinC, demandaPF, Destil):
         print(model.export_to_string())
         return -1
     assert solucion, "Solve failed"+str(model.get_solve_status())
-
-    # model.print_information()
-    # model.report()
+    model.print_information()
+    model.report()
     model.print_solution()
 
-    result = {}
-    result['solucion'] = [v.name.split(
-        '_') + [solucion.get_value(v)] for v in model.iter_variables()]
-
     cantLin = 30
+    dens_coefi = getCoeficientes(densidad, cantLin)
 
-    # Holgura
+    result = resultDic(solucion, model)
+
+    # Numero Restricciones
     n_cons = model.number_of_constraints
+    # Lista de restriccinoes
     const = [model.get_constraint_by_index(i) for i in range(n_cons)]
-    lhs_model = [model.get_constraint_by_index(i).lhs for i in range(n_cons)]
+
     h = model.slack_values(const)
     # La variable no negativa s1 es la holgura (o cantidad no utilizada) del recurso M1
     # La cantidad de S1 representa el exceso de toneladas de la mezcla sobre el mínimo requerido
-    print('-'*cantLin+'Holguras'+'-'*cantLin)
-    for n in range(len(lhs_model)):
-        print(lhs_model[n])
-    name_holgura = []
-    valor_holgura = []
-    for n in range(n_cons):
-        name_holgura.append(const[n].lp_name)
-        valor_holgura.append(h[n])
-    # load data into a DataFrame object:
-    result_holguras = {"nombre": name_holgura, "valor": valor_holgura}
+
+    restricciones_lhs = restriccionesLhs(model, n_cons)
+
+    result_holguras = holgura(n_cons, const, h, cantLin)
 
     # Precios duales o sombra
     # El nombre valor unitario de un recurso es una descripción adecuada de la
     # tasa de cambio de la función objetivo por unidad de cambio de un recurso.
     # función objetivo por unidad de cambio de un recurso. No obstante, los primeros
     # desarrollos de LP acuñaron el nombre abstracto de precio dual (o sombra)
-    print('-'*cantLin+'Precios Duales'+'-'*cantLin)
-    precios_duales = model.dual_values(const)
-    name_duales = []
-    valor_duales = []
-    for n in range(n_cons):
-        name_duales.append(const[n].lp_name)
-        valor_duales.append(precios_duales[n])
-    result_duales = {"nombre": name_duales, "valor": valor_duales}
+
+    precios_duales, valor_duales = preciosDuales(model, const, n_cons, cantLin)
+    df = pd.DataFrame(precios_duales)
+    print(df)
 
     # Analisis de sensibilidad
-    # El análisis de sensibilidad, que trata de determinar las condiciones que mantendrán inalterada la solución actual.
+
+    # El análisis de sensibilidad, que trata de determinar las condiciones que mantendrán inalterada
+    # la solución actual(Cuando se dice solucion actual es le valor de las variables no el de la funcion objetivo).
+
     # Rangos en que el modelo es factible
     cpx = model.get_engine().get_cplex()
     of = cpx.solution.sensitivity.objective()
@@ -126,53 +128,109 @@ def run(pInt, pFin, pIntC, pFinC, demandaPF, Destil):
     print("right info for the constraint ", b[indexConstraint])
     # Sensibilidad de la solución óptima a los cambios en la disponibilidad de los recursos
     # (lado derecho de las restricciones)
-    print('-'*cantLin+'Costo reducido'+'-'*cantLin)
+
     var_list = [model.get_var_by_index(i) for i in range(len(x)+len(gx)+1)]
-    name_costos_reducidos = []
-    valor_costos_reducidos = []
-    for n in range(len(var_list)):
-        name_costos_reducidos.append(str(var_list[n]))
-        valor_costos_reducidos.append(var_list[n].reduced_cost)
-    result_costos_reducidos = {
-        "nombre": name_costos_reducidos, "valor": valor_costos_reducidos}
+    result_costos_reducidos, costos_reducidos = costosReducidos(
+        var_list, cantLin)
 
     # Sensibilidad de la solución óptima a las variaciones del beneficio unitario o del coste unitario
     # (coeficientes de la función objetivo)
-    print('-'*cantLin+'SENSIBILIDAD FO'+'-'*cantLin)
 
-    name_sensibilidad_FO = []
-    valor_sensibilidad_FO = []
-    for n in range(len(var_list)):
-        name_sensibilidad_FO.append(var_list[n])
-        valor_sensibilidad_FO.append(of[n])
+    result_sensibilidad_FO = sensibilidad_FO(
+        var_list, of, costos_reducidos, cantLin)
 
-    result_sensibilidad_FO = {
-        "nombre": name_sensibilidad_FO, "costo_reducido": valor_costos_reducidos, "valor": valor_sensibilidad_FO}
-    df = pd.DataFrame(result_sensibilidad_FO)
-    print(df)
+    sensibilidad_rhs = sensibilidadRHS(n_cons, b, valor_duales, const, cantLin)
 
-    print('-'*cantLin+'SENSIBILIDAD LADO DERECHO'+'-'*cantLin)
-    result_rango_duales = {}
-    name_rango_ladoDerecho = []
-    valor_rango_ladoDerecho = []
-    for n in range(n_cons):
-        name_rango_ladoDerecho.append(const[n].lp_name)
-        valor_rango_ladoDerecho.append(str(b[n]))
+    result_bounds = ubSensibilidad(n_cons, const, ub, cantLin)
 
-    result_rango_ladoDerecho = {
-        "nombre": name_rango_ladoDerecho, 'duales': valor_duales, "valor": valor_rango_ladoDerecho}
+    return result
 
-    print('-'*cantLin+'SENSIBILIDAD Bounds'+'-'*cantLin)
+
+def getCoeficientes(densidad, cantLin):
+    print('-'*cantLin+'Coeficientes'+'-'*cantLin)
+    nombre_var = []
+    coeficiente = []
+    for v in densidad.iter_variables():
+        nombre_var.append(v)
+        coeficiente.append(densidad.lhs.get_coef(v))
+    return {'nombre': nombre_var, 'valor': coeficiente}
+
+
+def resultDic(solucion, model):
+    result = {}
+    result['solucion'] = [v.name.split(
+        '_') + [solucion.get_value(v)] for v in model.iter_variables()]
+    return result
+
+
+def restriccionesLhs(model, n_cons):
+    lhs_model = [model.get_constraint_by_index(i).lhs for i in range(n_cons)]
+    restricciones = []
+    for n in range(len(lhs_model)):
+        restricciones.append(lhs_model[n])
+    return {'lado derecho': restricciones}
+
+
+def ubSensibilidad(n_cons, const, ub, cantLin):
+    print('-'*cantLin+'SENSIBILIDAD ub'+'-'*cantLin)
     name_bounds = []
     valor_bounds = []
     for n in range(n_cons-1):
         name_bounds.append(const[n].lp_name)
         valor_bounds.append(str(ub[n]))
-    result_bounds = {
-        "nombre": name_bounds, "valor": valor_bounds}
+    return {"nombre": name_bounds, "valor": valor_bounds}
 
-    return result
-# matriz optimia
+
+def sensibilidadRHS(n_cons, b, valor_duales, const, cantLin):
+    print('-'*cantLin+'SENSIBILIDAD LADO DERECHO'+'-'*cantLin)
+    name_rango_ladoDerecho = []
+    valor_rango_ladoDerecho = []
+    for n in range(n_cons):
+        name_rango_ladoDerecho.append(const[n].lp_name)
+        valor_rango_ladoDerecho.append(str(b[n]))
+    return {"nombre": name_rango_ladoDerecho, 'duales': valor_duales, "valor": valor_rango_ladoDerecho}
+
+
+def sensibilidad_FO(var_list, of, costos_reducidos, cantLin):
+    print('-'*cantLin+'SENSIBILIDAD FO'+'-'*cantLin)
+    name_sensibilidad_FO = []
+    valor_sensibilidad_FO = []
+    for n in range(len(var_list)):
+        name_sensibilidad_FO.append(var_list[n])
+        valor_sensibilidad_FO.append(of[n])
+    return {"nombre": name_sensibilidad_FO, "costo_reducido": costos_reducidos, "valor": valor_sensibilidad_FO}
+
+
+def costosReducidos(var_list, cantLin):
+    print('-'*cantLin+'Costo reducido'+'-'*cantLin)
+    name_costos_reducidos = []
+    valor_costos_reducidos = []
+    for n in range(len(var_list)):
+        name_costos_reducidos.append(str(var_list[n]))
+        valor_costos_reducidos.append(var_list[n].reduced_cost)
+    return {"nombre": name_costos_reducidos, "valor": valor_costos_reducidos}, valor_costos_reducidos
+
+
+def preciosDuales(model, const, n_cons, cantLin):
+    print('-'*cantLin+'Precios Duales'+'-'*cantLin)
+    precios_duales = model.dual_values(const)
+    name_duales = []
+    valor_duales = []
+    for n in range(n_cons):
+        name_duales.append(const[n].lp_name)
+        valor_duales.append(precios_duales[n])
+    return {"nombre": name_duales, "valor": valor_duales}, valor_duales
+
+
+def holgura(n_cons, const, h, cantLin):
+    print('-'*cantLin+'Holguras'+'-'*cantLin)
+    name_holgura = []
+    valor_holgura = []
+    for n in range(n_cons):
+        name_holgura.append(const[n].lp_name)
+        valor_holgura.append(h[n])
+    # load data into a DataFrame object:
+    return {"nombre": name_holgura, "valor": valor_holgura}
 
 
 def matriz_optima(model):
@@ -184,7 +242,6 @@ def matriz_optima(model):
     print('-'*8)
     for fila in cp.solution.advanced.binvrow():
         print(fila)
-
 
     # Análisis postóptimo, que trata de encontrar una nueva solución óptima cuando cambian los datos del modelo.
 if (__name__ == '__main__'):
