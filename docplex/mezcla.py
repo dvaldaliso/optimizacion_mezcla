@@ -86,7 +86,8 @@ def run(pInt, pFin, pIntC, pFinC, demandaPF, Destil):
     cantLin = 30
     dens_coefi = getCoeficientes(densidad, cantLin)
 
-    result = resultDic(solucion, model)
+    result = resultDic(solucion, model, True)
+    result_list = resultDic(solucion, model, False)
 
     # Numero Restricciones
     n_cons = model.number_of_constraints
@@ -108,8 +109,6 @@ def run(pInt, pFin, pIntC, pFinC, demandaPF, Destil):
     # desarrollos de LP acuñaron el nombre abstracto de precio dual (o sombra)
 
     precios_duales, valor_duales = preciosDuales(model, const, n_cons, cantLin)
-    df = pd.DataFrame(precios_duales)
-    print(df)
 
     # Analisis de sensibilidad
 
@@ -137,13 +136,22 @@ def run(pInt, pFin, pIntC, pFinC, demandaPF, Destil):
     # (coeficientes de la función objetivo)
 
     result_sensibilidad_FO = sensibilidad_FO(
-        var_list, of, costos_reducidos, cantLin)
+        var_list, of, costos_reducidos, cantLin, result_list, model, ganancia_neta)
 
-    sensibilidad_rhs = sensibilidadRHS(n_cons, b, valor_duales, const, cantLin)
-
-    result_bounds = ubSensibilidad(n_cons, const, ub, cantLin)
+    sensibilidad_rhs = sensibilidadRHS(
+        n_cons, b, valor_duales, const, cantLin)
+    df = pd.DataFrame(sensibilidad_rhs)
+    # print(df)
+    result_bounds = ubSensibilidad(n_cons, const, bounds, cantLin)
 
     return result
+
+
+def getCoeficientesOBJ(obj):
+    coeficientes = []
+    for v in obj.iter_variables():
+        coeficientes.append(obj.get_coef(v))
+    return coeficientes
 
 
 def getCoeficientes(densidad, cantLin):
@@ -156,10 +164,15 @@ def getCoeficientes(densidad, cantLin):
     return {'nombre': nombre_var, 'valor': coeficiente}
 
 
-def resultDic(solucion, model):
-    result = {}
-    result['solucion'] = [v.name.split(
-        '_') + [solucion.get_value(v)] for v in model.iter_variables()]
+def resultDic(solucion, model, como_diccionario):
+    if como_diccionario == True:
+        result = {}
+        result['solucion'] = [v.name.split(
+            '_') + [solucion.get_value(v)] for v in model.iter_variables()]
+        return result
+    result = []
+    for v in model.iter_variables():
+        result.append(solucion.get_value(v))
     return result
 
 
@@ -191,14 +204,17 @@ def sensibilidadRHS(n_cons, b, valor_duales, const, cantLin):
     return {"nombre": name_rango_ladoDerecho, 'duales': valor_duales, "valor": valor_rango_ladoDerecho}
 
 
-def sensibilidad_FO(var_list, of, costos_reducidos, cantLin):
+def sensibilidad_FO(var_list, of, costos_reducidos, cantLin, result_list, model, obj):
     print('-'*cantLin+'SENSIBILIDAD FO'+'-'*cantLin)
     name_sensibilidad_FO = []
     valor_sensibilidad_FO = []
+    coeficientes = []
     for n in range(len(var_list)):
         name_sensibilidad_FO.append(var_list[n])
         valor_sensibilidad_FO.append(of[n])
-    return {"nombre": name_sensibilidad_FO, "costo_reducido": costos_reducidos, "valor": valor_sensibilidad_FO}
+        coeficientes.append(obj.get_coef(var_list[n]))
+
+    return {"nombre": name_sensibilidad_FO, 'FinalValor': result_list,  "costoReducido": costos_reducidos, 'OBJcoeficientes': coeficientes, "rango": valor_sensibilidad_FO}
 
 
 def costosReducidos(var_list, cantLin):
@@ -242,6 +258,7 @@ def matriz_optima(model):
     print('-'*8)
     for fila in cp.solution.advanced.binvrow():
         print(fila)
+
 
     # Análisis postóptimo, que trata de encontrar una nueva solución óptima cuando cambian los datos del modelo.
 if (__name__ == '__main__'):
