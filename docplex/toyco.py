@@ -1,5 +1,7 @@
 #! /usr/bin/python3
 from docplex.mp.model import Model
+import numpy as np
+import sympy as sym
 
 m = Model(name='Toyco')
 x1 = m.continuous_var(name="x1", lb=0)
@@ -53,6 +55,20 @@ cp = m.get_cplex()
 
 for fila in cp.solution.advanced.binvarow():
     print(fila)
-print('-'*8)
-for fila in cp.solution.advanced.binvrow():
-    print(fila)
+
+
+def cambioRHS(cpx):
+    print('B inversa'+'-'*8)
+    inv = [cp.solution.advanced.binvrow()[2], cp.solution.advanced.binvrow()[
+        1], cp.solution.advanced.binvrow()[0]]
+    Binversa = np.array(inv)
+    x = sym.symbols('x')
+    bnew = np.array([[x], [460], [420]])
+
+    print(Binversa)
+    print(bnew)
+    c = Binversa@bnew
+    print(c)
+
+
+cambioRHS(cpx)

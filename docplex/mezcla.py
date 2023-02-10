@@ -4,6 +4,9 @@ from docplex.mp.model import Model
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import sympy as sym
+
+path_excel = r'/media/desarrollo/datos/Matemática Aplicada/tesis/Tesis Mezcaldo gasolina/Tesis versiones/Agregado/Analisando resultados/resultado.xlsx'
 
 
 def run(pInt, pFin, pIntC, pFinC, demandaPF, Destil):
@@ -15,8 +18,9 @@ def run(pInt, pFin, pIntC, pFinC, demandaPF, Destil):
 
     x = model.continuous_var_matrix(
         keys1=pInt, keys2=pFin, lb=0, name='X')
+
     ar = model.continuous_var(name='Alimentacion al reformador', lb=0, ub=1526)
-    gx = model.continuous_var_dict(pFin, name='gasolina final', lb=0)
+    #gx = model.continuous_var_dict(pFin, name='gasolina final', lb=0)
 
     # Balance de materiales (Lo que se extrae de los productos intermedios no sobrepasara la existencia)
     # flujos
@@ -24,7 +28,8 @@ def run(pInt, pFin, pIntC, pFinC, demandaPF, Destil):
                          <= pIntC['Nvl']['Rendimiento'] * Destil, ctname='MB Nafta Virgen Ligera')
     model.add_constraint(x['Np', '83'] + x['Np', '90'] + x['Np', '94'] +
                          ar <= pIntC['Np']['Rendimiento'] * Destil, ctname='MB Nafta Virgen Pesada')
-    # Reformador o Pool
+
+    # Reformador o Pool salida
     model.add_constraint(x['Ref', '83'] + x['Ref', '90'] + x['Ref', '94']
                          <= pIntC['Ref']['Rendimiento'] * ar, ctname='MB Reformador')
     # Productos importados
@@ -34,12 +39,12 @@ def run(pInt, pFin, pIntC, pFinC, demandaPF, Destil):
                          <= pIntC['Ncraq']['Rendimiento'], ctname='MB Nafta Craqueda')
 
     # gasolinaj
-    for j in pFin:
-        if j != 'Nex':
-            model.add_constraint(model.sum(x[i, j]
-                                           for i in pInt) == gx[j], ctname='Gasolina '+j)
-    model.add_constraint(x['Nvl', 'Nex']+x['Ni', 'Nex'] +
-                         x['Ncraq', 'Nex'] == gx['Nex'], ctname='Nafta exceso')
+    # for j in pFin:
+    #    if j != 'Nex':
+    #        model.add_constraint(model.sum(x[i, j]
+    #                                       for i in pInt) == gx[j], ctname='Gasolina '+j)
+    # model.add_constraint(x['Nvl', 'Nex']+x['Ni', 'Nex'] +
+    #                    x['Ncraq', 'Nex'] == gx['Nex'], ctname='Nafta exceso')
 
     densidad = ''
     # Calidad
@@ -47,31 +52,26 @@ def run(pInt, pFin, pIntC, pFinC, demandaPF, Destil):
         if j != 'Nex':
             octanomin = 0 if j == '94' else 0
             model.add_constraint(model.sum(x[i, j]*pIntC[i]['RBN']
-                                           for i in pInt) - pFinC[j]['RBNmin']*gx[j] >= octanomin, ctname='Calidad Octano min '+j)
+                                           for i in pInt) - pFinC[j]['RBNmin']*pintsum(x, j) >= octanomin, ctname='Calidad Octano min '+j)
             densidad = model.add_constraint(model.sum(x[i, j]*pIntC[i]['Densidad']
-                                                      for i in pInt) - pFinC[j]['Densidadmin']*gx[j] >= 0, ctname='Calidad Densidad min'+j)
+                                                      for i in pInt) - pFinC[j]['Densidadmin']*pintsum(x, j) >= 0, ctname='Calidad Densidad min'+j)
             model.add_constraint(model.sum(x[i, j]*pIntC[i]['IMPVR']
-                                           for i in pInt) - pFinC[j]['IMPVRmax']*gx[j] <= 0, ctname='Calidad Presion de vapor max '+j)
+                                           for i in pInt) - pFinC[j]['IMPVRmax']*pintsum(x, j) <= 0, ctname='Calidad Presion de vapor max '+j)
             model.add_constraint(model.sum(x[i, j]*pIntC[i]['PAzufre']
-                                           for i in pInt) - pFinC[j]['Azufemax']*gx[j] <= 0, ctname='Calidad Azufre max'+j)
+                                           for i in pInt) - pFinC[j]['Azufemax']*wgasolina(x, j) <= 0, ctname='Calidad Azufre max'+j)
 
     # Demanda
     for j in pFin:
         if isinstance(demandaPF[j]['Min'], (int, float)):
-            model.add_constraint(gx[j] >= demandaPF[j]
+            model.add_constraint(pintsum(x, j) >= demandaPF[j]
                                  ['Min'], ctname='Demanda por Min '+j)
         if isinstance(demandaPF[j]['Max'], (int, float)):
-            model.add_constraint(gx[j] <= demandaPF[j]
+            model.add_constraint(pintsum(x, j) <= demandaPF[j]
                                  ['Max'], ctname='Demanda por Max '+j)
 
     # Funcion Objetivo
-    def pintsum(j):
-        pIntaux = pInt
-        if j == 'Nex':
-            pIntaux = {'Nvl', 'Ni', 'Ncraq'}
-        return sum(x[i, j] for i in pIntaux)
 
-    ganancia_neta = model.sum(pFinC[j]['price'] * pintsum(j) for j in pFin)
+    ganancia_neta = model.sum(pFinC[j]['price'] * pintsum(x, j) for j in pFin)
 
     model.set_objective("Max", ganancia_neta)
 
@@ -81,7 +81,7 @@ def run(pInt, pFin, pIntC, pFinC, demandaPF, Destil):
         print("!! Error al resolver el modelo")
         print(model.export_to_string())
         return -1
-    assert solucion, "Solve failed"+str(model.get_solve_status())
+    assert solucion, "Fallo la solucion "+str(model.get_solve_status())
     model.print_information()
     model.report()
     model.print_solution()
@@ -103,6 +103,8 @@ def run(pInt, pFin, pIntC, pFinC, demandaPF, Destil):
     restricciones_lhs = restriccionesLhs(model, n_cons)
 
     result_holguras = holgura(n_cons, const, model, cantLin)
+    df = pd.DataFrame(result_holguras)
+    df.to_excel(path_excel, index=False)
 
     # Precios duales o sombra
     # El nombre valor unitario de un recurso es una descripción adecuada de la
@@ -111,7 +113,8 @@ def run(pInt, pFin, pIntC, pFinC, demandaPF, Destil):
     # desarrollos de LP acuñaron el nombre abstracto de precio dual (o sombra)
 
     precios_duales, valor_duales = preciosDuales(model, const, n_cons, cantLin)
-
+    df_p = pd.DataFrame(precios_duales)
+    #df_p.to_excel(path_excel, sheet_name='Precios duales', index=False)
     # Analisis de sensibilidad
 
     # El análisis de sensibilidad, que trata de determinar las condiciones que mantendrán inalterada
@@ -130,24 +133,49 @@ def run(pInt, pFin, pIntC, pFinC, demandaPF, Destil):
     # Sensibilidad de la solución óptima a los cambios en la disponibilidad de los recursos
     # (lado derecho de las restricciones)
 
-    var_list = [model.get_var_by_index(i) for i in range(len(x)+len(gx)+1)]
+    var_list = [model.get_var_by_index(i) for i in range(len(x))]
     result_costos_reducidos, costos_reducidos = costosReducidos(
         var_list, cantLin)
-
+    df_cr = pd.DataFrame(result_costos_reducidos)
     # Sensibilidad de la solución óptima a las variaciones del beneficio unitario o del coste unitario
     # (coeficientes de la función objetivo)
 
     result_sensibilidad_FO = sensibilidad_FO(
-        var_list, of, costos_reducidos, cantLin, result_list, ganancia_neta)
+        var_list, of, costos_reducidos, cantLin, result_list[: -1], ganancia_neta)
+    print(result_sensibilidad_FO['nombre'])
+    print(result_sensibilidad_FO['FinalValor'])
+    df_senFO = pd.DataFrame(result_sensibilidad_FO)
 
-    sensibilidad_rhs = sensibilidadRHS(
+    sensibilidad_rhs, rhsVal = sensibilidadRHS(
         n_cons, b, valor_duales, const, model, cantLin)
-    df = pd.DataFrame(sensibilidad_rhs)
-    print(df)
-    result_bounds = ubSensibilidad(n_cons, const, bounds, cantLin)
-    graficarResult(result)
+    df_senRHS = pd.DataFrame(sensibilidad_rhs)
 
+    result_bounds = ubSensibilidad(n_cons, const, ub, cantLin)
+    df_bounds = pd.DataFrame(result_bounds)
+    with pd.ExcelWriter(path_excel) as writer:
+        df.to_excel(writer, sheet_name='holgura')
+        df_p.to_excel(writer, sheet_name='precios duales')
+        df_cr.to_excel(writer, sheet_name='Costos reducidos')
+        df_senFO.to_excel(writer, sheet_name='SensibilidadFo')
+        df_senRHS.to_excel(writer, sheet_name='SensibilidadRHS')
+        df_bounds.to_excel(writer, sheet_name='Bounds')
+    graficarResult(result)
+    #matriz_optima(model, rhsVal)
     return result
+
+
+def pintsum(x, j):
+    pIntaux = pInt
+    if j == 'Nex':
+        pIntaux = {'Nvl', 'Ni', 'Ncraq'}
+    return sum(x[i, j] for i in pIntaux)
+
+
+def wgasolina(x, j):
+    pIntaux = pInt
+    if j == 'Nex':
+        pIntaux = {'Nvl', 'Ni', 'Ncraq'}
+    return sum(x[i, j]*pIntC[i]['Densidad'] for i in pIntaux)
 
 
 def getResult(resultado):
@@ -270,7 +298,7 @@ def sensibilidadRHS(n_cons, b, valor_duales, const, model, cantLin):
         name_rango_ladoDerecho.append(const[n].lp_name)
         valor_rango_ladoDerecho.append(str(b[n]))
         rhs.append(model.get_constraint_by_name(const[n].lp_name).rhs)
-    return {"nombre": name_rango_ladoDerecho, 'duales': valor_duales, "RHS": rhs, "valor": valor_rango_ladoDerecho}
+    return {"nombre": name_rango_ladoDerecho, 'duales': valor_duales, "RHS": rhs, "valor": valor_rango_ladoDerecho}, rhs
 
 
 def sensibilidad_FO(var_list, of, costos_reducidos, cantLin, result_list, obj):
@@ -319,16 +347,17 @@ def holgura(n_cons, const, model, cantLin):
     return {"nombre": name_holgura, "valor": valor_holgura}
 
 
-def matriz_optima(model):
+def matriz_optima(model, rhsval):
     print('-----Matriz Soluction Optima-----------')
     cp = model.get_cplex()
-
-    for fila in cp.solution.advanced.binvarow():
-        print(fila)
-    print('-'*8)
-    for fila in cp.solution.advanced.binvrow():
-        print(fila)
-
+    print('B inversa * A'+'-'*8)
+    BInversaPorA = np.array(cp.solution.advanced.binvarow())
+    print('B inversa * b'+'-'*8)
+    BInversaPorb = np.array(cp.solution.advanced.binvrow())
+    x = sym.symbols('x')
+    rhsval[2] = x
+    c = BInversaPorb@rhsval
+    print(c)
 
     # Análisis postóptimo, que trata de encontrar una nueva solución óptima cuando cambian los datos del modelo.
 if (__name__ == '__main__'):
