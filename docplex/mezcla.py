@@ -24,56 +24,62 @@ def run(pInt, pFin, pIntC, pFinC, demandaPF, Destil):
 
     # Balance de materiales (Lo que se extrae de los productos intermedios no sobrepasara la existencia)
     # flujos
-    model.add_constraint(x['Nvl', '83'] + x['Nvl', '90'] + x['Nvl', '94'] + x['Nvl', 'Nex']
-                         <= pIntC['Nvl']['Rendimiento'] * Destil, ctname='MB Nafta Virgen Ligera')
-    model.add_constraint(x['Np', '83'] + x['Np', '90'] + x['Np', '94'] +
-                         ar <= pIntC['Np']['Rendimiento'] * Destil, ctname='MB Nafta Virgen Pesada')
+    mbNvl = model.add_constraint(x['Nvl', '83'] + x['Nvl', '90'] + x['Nvl', '94'] + x['Nvl', 'Nex']
+                                 <= pIntC['Nvl']['Rendimiento'] * Destil, ctname='MB Nafta Virgen Ligera')
+    mbNp = model.add_constraint(x['Np', '83'] + x['Np', '90'] + x['Np', '94'] +
+                                ar <= pIntC['Np']['Rendimiento'] * Destil, ctname='MB Nafta Virgen Pesada')
 
     # Reformador o Pool salida
-    model.add_constraint(x['Ref', '83'] + x['Ref', '90'] + x['Ref', '94']
-                         <= pIntC['Ref']['Rendimiento'] * ar, ctname='MB Reformador')
+    mbReformada = model.add_constraint(x['Ref', '83'] + x['Ref', '90'] + x['Ref', '94']
+                                       <= pIntC['Ref']['Rendimiento'] * ar, ctname='MB Reformador')
     # Productos importados
-    model.add_constraint(x['Ni', '83'] + x['Ni', '90'] + x['Ni', '94'] + x['Ni', 'Nex']
-                         <= pIntC['Ni']['Rendimiento'], ctname='MB Nafta Importada')
-    model.add_constraint(x['Ncraq', '83'] + x['Ncraq', '90'] + x['Ncraq', '94'] + x['Ncraq', 'Nex']
-                         <= pIntC['Ncraq']['Rendimiento'], ctname='MB Nafta Craqueda')
-
+    mbNi = model.add_constraint(x['Ni', '83'] + x['Ni', '90'] + x['Ni', '94'] + x['Ni', 'Nex']
+                                <= pIntC['Ni']['Rendimiento'], ctname='MB Nafta Importada')
+    mbNcraq = model.add_constraint(x['Ncraq', '83'] + x['Ncraq', '90'] + x['Ncraq', '94'] + x['Ncraq', 'Nex']
+                                   <= pIntC['Ncraq']['Rendimiento'], ctname='MB Nafta Craqueda')
     # gasolinaj
     # for j in pFin:
     #    if j != 'Nex':
     #        model.add_constraint(model.sum(x[i, j]
     #                                       for i in pInt) == gx[j], ctname='Gasolina '+j)
     # model.add_constraint(x['Nvl', 'Nex']+x['Ni', 'Nex'] +
-    #                    x['Ncraq', 'Nex'] == gx['Nex'], ctname='Nafta exceso')
+    #                     x['Ncraq', 'Nex'] == gx['Nex'], ctname='Nafta exceso')
 
-    densidad = ''
+    densidad = {}
+    octano = {}
+    RVP = {}
+    Azufre = {}
     # Calidad
     for j in pFin:
         if j != 'Nex':
-            octanomin = 0 if j == '94' else 0
-            model.add_constraint(model.sum(x[i, j]*pIntC[i]['RBN']
-                                           for i in pInt) - pFinC[j]['RBNmin']*pintsum(x, j) >= octanomin, ctname='Calidad Octano min '+j)
-            densidad = model.add_constraint(model.sum(x[i, j]*pIntC[i]['Densidad']
-                                                      for i in pInt) - pFinC[j]['Densidadmin']*pintsum(x, j) >= 0, ctname='Calidad Densidad min'+j)
-            model.add_constraint(model.sum(x[i, j]*pIntC[i]['IMPVR']
-                                           for i in pInt) - pFinC[j]['IMPVRmax']*pintsum(x, j) <= 0, ctname='Calidad Presion de vapor max '+j)
-            model.add_constraint(model.sum(x[i, j]*pIntC[i]['PAzufre']
-                                           for i in pInt) - pFinC[j]['Azufemax']*wgasolina(x, j) <= 0, ctname='Calidad Azufre max'+j)
+            octano[j] = model.add_constraint(model.sum(x[i, j]*pIntC[i]['RBN']
+                                                       for i in pInt) >= pFinC[j]['RBNmin']*pintsum(x, j), ctname='Calidad Octano min '+j)
+            densidad[j] = model.add_constraint(model.sum(x[i, j]*pIntC[i]['Densidad']
+                                                         for i in pInt) >= pFinC[j]['Densidadmin']*pintsum(x, j), ctname='Calidad Densidad min'+j)
+            RVP[j] = model.add_constraint(model.sum(x[i, j]*pIntC[i]['IMPVR']
+                                                    for i in pInt) <= pFinC[j]['IMPVRmax']*pintsum(x, j), ctname='Calidad Presion de vapor max '+j)
+            Azufre[j] = model.add_constraint(model.sum(x[i, j]*pIntC[i]['PAzufre']
+                                                       for i in pInt) <= pFinC[j]['Azufemax']*wgasolina(x, j), ctname='Calidad Azufre max'+j)
 
     # Demanda
+    demanda = {}
     for j in pFin:
         if isinstance(demandaPF[j]['Min'], (int, float)):
-            model.add_constraint(pintsum(x, j) >= demandaPF[j]
-                                 ['Min'], ctname='Demanda por Min '+j)
+            demanda[j+'Min'] = model.add_constraint(pintsum(x, j) >= demandaPF[j]
+                                                    ['Min'], ctname='Demanda por Min '+j)
         if isinstance(demandaPF[j]['Max'], (int, float)):
-            model.add_constraint(pintsum(x, j) <= demandaPF[j]
-                                 ['Max'], ctname='Demanda por Max '+j)
-
+            demanda[j+'Max'] = model.add_constraint(pintsum(x, j) <= demandaPF[j]
+                                                    ['Max'], ctname='Demanda por Max '+j)
+    print(demanda)
     # Funcion Objetivo
 
-    ganancia_neta = model.sum(pFinC[j]['price'] * pintsum(x, j) for j in pFin)
-
-    model.set_objective("Max", ganancia_neta)
+    ganancia = model.sum(pFinC[j]['price'] * pintsum(x, j) for j in pFin)
+    # Costos de todo lo que va de los productos intermedios a final mas lo que va de Np a reformador
+    costo = model.sum(pintsum(x, j, True)
+                      for j in pFin) + ar*pIntC['Np']['costo']
+    print(ganancia)
+    #ganancia = ganancia-costo
+    model.set_objective("Max", ganancia)
 
     solucion = model.solve()
 
@@ -82,6 +88,7 @@ def run(pInt, pFin, pIntC, pFinC, demandaPF, Destil):
         print(model.export_to_string())
         return -1
     assert solucion, "Fallo la solucion "+str(model.get_solve_status())
+
     model.print_information()
     model.report()
     model.print_solution()
@@ -141,9 +148,7 @@ def run(pInt, pFin, pIntC, pFinC, demandaPF, Destil):
     # (coeficientes de la función objetivo)
 
     result_sensibilidad_FO = sensibilidad_FO(
-        var_list, of, costos_reducidos, cantLin, result_list[: -1], ganancia_neta)
-    print(result_sensibilidad_FO['nombre'])
-    print(result_sensibilidad_FO['FinalValor'])
+        var_list, of, costos_reducidos, cantLin, result_list[: -1], ganancia)
     df_senFO = pd.DataFrame(result_sensibilidad_FO)
 
     sensibilidad_rhs, rhsVal = sensibilidadRHS(
@@ -164,10 +169,12 @@ def run(pInt, pFin, pIntC, pFinC, demandaPF, Destil):
     return result
 
 
-def pintsum(x, j):
+def pintsum(x, j, costo=False):
     pIntaux = pInt
     if j == 'Nex':
         pIntaux = {'Nvl', 'Ni', 'Ncraq'}
+    if costo:
+        return sum(pIntC[i]['costo']*x[i, j] for i in pIntaux)
     return sum(x[i, j] for i in pIntaux)
 
 
@@ -175,7 +182,7 @@ def wgasolina(x, j):
     pIntaux = pInt
     if j == 'Nex':
         pIntaux = {'Nvl', 'Ni', 'Ncraq'}
-    return sum(x[i, j]*pIntC[i]['Densidad'] for i in pIntaux)
+    return sum(x[i, j] for i in pIntaux)
 
 
 def getResult(resultado):
@@ -253,9 +260,9 @@ def getCoeficientes(densidad, cantLin):
     print('-'*cantLin+'Coeficientes'+'-'*cantLin)
     nombre_var = []
     coeficiente = []
-    for v in densidad.iter_variables():
+    for v in densidad['94'].iter_variables():
         nombre_var.append(v)
-        coeficiente.append(densidad.lhs.get_coef(v))
+        coeficiente.append(densidad['94'].lhs.get_coef(v))
     return {'nombre': nombre_var, 'valor': coeficiente}
 
 
@@ -367,11 +374,11 @@ if (__name__ == '__main__'):
     pFin = {'83', '90', '94', 'Nex'}
     # productos Intermedios caracterisiticas
     pIntC = {
-        'Nvl': {'Rendimiento': 0.04776, 'RBN': 55.48230, 'IMPVR': 0.61140, 'PAzufre': 64.72995, 'Densidad': 0.66703},
-        'Np':  {'Rendimiento': 0.151957, 'RBN': 52.52652, 'IMPVR': 0.03713, 'PAzufre': 345.32027, 'Densidad': 0.74964},
-        'Ref': {'Rendimiento': 0.82455, 'RBN': 65.13, 'IMPVR': 0.02998, 'PAzufre': 0.78492, 'Densidad': 0.78712},
-        'Ni': {'Rendimiento': 0, 'RBN': 0, 'IMPVR': 0, 'PAzufre': 0, 'Densidad': 0},
-        'Ncraq': {'Rendimiento': 0, 'RBN': 0, 'IMPVR': 0, 'PAzufre': 0, 'Densidad': 0}
+        'Nvl': {'costo': 704.25, 'Rendimiento': 0.04776, 'RBN': 55.48230, 'IMPVR': 0.61140, 'PAzufre': 64.72995, 'Densidad': 0.66703},
+        'Np':  {'costo': 2239.46, 'Rendimiento': 0.151957, 'RBN': 52.52652, 'IMPVR': 0.03713, 'PAzufre': 345.32027, 'Densidad': 0.74964},
+        'Ref': {'costo': 197.4284, 'Rendimiento': 0.82455, 'RBN': 65.13, 'IMPVR': 0.02998, 'PAzufre': 0.78492, 'Densidad': 0.78712},
+        'Ni': {'costo': 13754.56, 'Rendimiento': 0, 'RBN': 0, 'IMPVR': 0, 'PAzufre': 0, 'Densidad': 0},
+        'Ncraq': {'costo': 23437.54, 'Rendimiento': 0, 'RBN': 0, 'IMPVR': 0, 'PAzufre': 0, 'Densidad': 0}
     }
     # traer datos del Assat
     fc2 = 0.200
